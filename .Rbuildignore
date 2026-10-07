@@ -1,0 +1,6 @@
+^AGENTS\.md$
+^\.git$
+^\.gitignore$
+^\.github$
+^.*\.Rproj$
+^\.Rproj\.user$
