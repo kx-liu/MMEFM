@@ -125,6 +125,10 @@ Use `<-` for assignment.
 
 Do not use semicolons or multiple statements on one line.
 
+Use line breaks when they improve readability or are needed for conventional
+formatting. Do not mechanically split short function calls, assignments,
+conditions, or expressions across lines without a readability reason.
+
 Use `seq_len()` and `seq_along()` instead of constructions such as `1:n` when
 zero-length cases are possible.
 
