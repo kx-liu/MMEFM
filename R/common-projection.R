@@ -70,8 +70,10 @@
   directions
 }
 
-# Algorithm 1 with known ranks. The caller, not this initializer, owns the RNG seed.
-.initial_common_loadings <- function(check_Y, kr, kc, K0 = 20L, max_iter = 20L, tol = 1e-4, verbose = FALSE) {
+# Algorithm 1 updates automatic ranks inside the projection iteration; the caller owns the RNG seed.
+.initial_common_loadings <- function(check_Y, kr = NULL, kc = NULL, K0 = 20L, max_iter = 20L, tol = 1e-4, verbose = FALSE) {
+  if (is.null(kr) != is.null(kc)) stop("kr and kc must either both be supplied or both be NULL.")
+  automatic_rank <- is.null(kr)
   M <- length(check_Y)
   pools <- vector("list", M)
   for (m in seq_len(M)) {
@@ -84,13 +86,28 @@
     }
   }
   directions <- .select_common_directions(check_Y, pools, "row")
-  Q_hat <- lapply(.common_global_psd(check_Y, directions, "row"), .leading_eigenvectors, k = kr)
+  row_psd <- .common_global_psd(check_Y, directions, "row")
+  if (automatic_rank) {
+    row_rank_fit <- .paper_eigen_ratio(row_psd)
+    kr <- row_rank_fit$rank
+    Q_hat <- lapply(row_rank_fit$eigenvectors, function(V) V[, seq_len(kr), drop = FALSE])
+  } else {
+    Q_hat <- lapply(row_psd, .leading_eigenvectors, k = kr)
+  }
   for (m in seq_len(M)) {
     pools[[m]] <- vector("list", kr)
     for (k in seq_len(kr)) pools[[m]][[k]] <- Q_hat[[m]][, k, drop = FALSE]
   }
   directions <- .select_common_directions(check_Y, pools, "column")
-  J_hat <- lapply(.common_global_psd(check_Y, directions, "column"), .leading_eigenvectors, k = kc)
+  column_psd <- .common_global_psd(check_Y, directions, "column")
+  if (automatic_rank) {
+    column_rank_fit <- .paper_eigen_ratio(column_psd)
+    kc <- column_rank_fit$rank
+    J_hat <- lapply(column_rank_fit$eigenvectors, function(V) V[, seq_len(kc), drop = FALSE])
+    rank_path <- matrix(c(kr, kc), nrow = 1L, dimnames = list(NULL, c("kr", "kc")))
+  } else {
+    J_hat <- lapply(column_psd, .leading_eigenvectors, k = kc)
+  }
 
   iterations <- 0L
   converged <- FALSE
@@ -98,25 +115,52 @@
     iterations <- iter
     Q_old <- Q_hat
     J_old <- J_hat
+    previous_rank <- c(kr, kc)
     for (m in seq_len(M)) {
       pools[[m]] <- vector("list", kr)
       for (k in seq_len(kr)) pools[[m]][[k]] <- Q_hat[[m]][, k, drop = FALSE]
     }
     directions <- .select_common_directions(check_Y, pools, "column")
-    J_hat <- lapply(.common_global_psd(check_Y, directions, "column"), .leading_eigenvectors, k = kc)
+    column_psd <- .common_global_psd(check_Y, directions, "column")
+    if (automatic_rank) {
+      column_rank_fit <- .paper_eigen_ratio(column_psd)
+      kc <- column_rank_fit$rank
+      J_hat <- lapply(column_rank_fit$eigenvectors, function(V) V[, seq_len(kc), drop = FALSE])
+    } else {
+      J_hat <- lapply(column_psd, .leading_eigenvectors, k = kc)
+    }
     for (m in seq_len(M)) {
       pools[[m]] <- vector("list", kc)
       for (k in seq_len(kc)) pools[[m]][[k]] <- J_hat[[m]][, k, drop = FALSE]
     }
     directions <- .select_common_directions(check_Y, pools, "row")
-    Q_hat <- lapply(.common_global_psd(check_Y, directions, "row"), .leading_eigenvectors, k = kr)
-    discrepancy <- 0
-    for (m in seq_len(M)) discrepancy <- discrepancy + .subspace_distance(Q_hat[[m]], Q_old[[m]]) + .subspace_distance(J_hat[[m]], J_old[[m]])
+    row_psd <- .common_global_psd(check_Y, directions, "row")
+    if (automatic_rank) {
+      row_rank_fit <- .paper_eigen_ratio(row_psd)
+      kr <- row_rank_fit$rank
+      Q_hat <- lapply(row_rank_fit$eigenvectors, function(V) V[, seq_len(kr), drop = FALSE])
+      rank_path <- rbind(rank_path, c(kr, kc))
+    } else {
+      Q_hat <- lapply(row_psd, .leading_eigenvectors, k = kr)
+    }
+    discrepancy <- Inf
+    if (identical(c(kr, kc), previous_rank)) {
+      discrepancy <- 0
+      for (m in seq_len(M)) discrepancy <- discrepancy + .subspace_distance(Q_hat[[m]], Q_old[[m]]) + .subspace_distance(J_hat[[m]], J_old[[m]])
+    }
     if (verbose) cat(sprintf("projection iteration %d: discrepancy=%.5f\n", iter, discrepancy))
     if (is.finite(discrepancy) && discrepancy < tol) {
       converged <- TRUE
       break
     }
   }
-  list(Q_hat = Q_hat, J_hat = J_hat, iterations = iterations, converged = converged)
+  result <- list(Q_hat = Q_hat, J_hat = J_hat, iterations = iterations, converged = converged)
+  if (automatic_rank) {
+    result$kr <- kr
+    result$kc <- kc
+    result$rank_path <- rank_path
+    result$row_rank_fit <- row_rank_fit
+    result$column_rank_fit <- column_rank_fit
+  }
+  result
 }
