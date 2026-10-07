@@ -163,3 +163,43 @@ test_that("the internal rank constructor preserves ranks and optional diagnostic
   expect_identical(supplied$diagnostics, diagnostics)
   expect_identical(unclass(supplied)[names(ranks)], ranks)
 })
+
+test_that("rank objects validate to ordinary canonical ranks without diagnostics", {
+  data_info <- .validate_Xt(list(a = array(0, c(1, 3, 5)), b = array(0, c(1, 5, 4))))
+  ranks <- list(r1 = 1L, l1 = 1L, r2 = c(a = 1L, b = 2L), l2 = c(a = 2L, b = 1L), kr = 1L, kc = 1L, kr_m = c(a = 1L, b = 2L), kc_m = c(a = 2L, b = 1L))
+  object <- .new_mmefm_rank(ranks, list(ratios = c(0.1, 0.9)))
+  canonical <- .validate_rank(object, data_info)
+  expect_identical(canonical, ranks)
+  expect_false("diagnostics" %in% names(canonical))
+  expect_false(inherits(canonical, "mmefm_rank"))
+  expect_identical(.validate_rank(.new_mmefm_rank(ranks), data_info), ranks)
+  expect_error(.validate_rank(unclass(object), data_info), "complete named list")
+  class(object) <- c("special_rank", "mmefm_rank")
+  expect_identical(.validate_rank(object, data_info), ranks)
+})
+
+test_that("a rank object's class does not bypass structural or value validation", {
+  data_info <- .validate_Xt(list(a = array(0, c(1, 3, 5)), b = array(0, c(1, 5, 4))))
+  ranks <- list(r1 = 1L, l1 = 1L, r2 = c(a = 1L, b = 2L), l2 = c(a = 2L, b = 1L), kr = 1L, kc = 1L, kr_m = c(a = 1L, b = 2L), kc_m = c(a = 2L, b = 1L))
+  object <- .new_mmefm_rank(ranks)
+  for (component in names(ranks)) {
+    invalid <- object
+    invalid[[component]][1] <- 1.5
+    expect_error(.validate_rank(invalid, data_info), "positive whole-number")
+    invalid <- object
+    invalid[[component]] <- NULL
+    expect_error(.validate_rank(invalid, data_info), "complete named list")
+  }
+  invalid <- object
+  invalid$r1 <- min(data_info$p)
+  expect_error(.validate_rank(invalid, data_info), "minimum group dimension")
+  invalid <- object
+  invalid$kr_m[2] <- data_info$p[2]
+  expect_error(.validate_rank(invalid, data_info), "corresponding group dimension")
+  invalid <- object
+  invalid$diagnostics <- NULL
+  expect_error(.validate_rank(invalid, data_info), "complete named list")
+  invalid <- object
+  invalid$other <- 1L
+  expect_error(.validate_rank(invalid, data_info), "complete named list")
+})

@@ -33,13 +33,14 @@
 # data_info is the metadata returned by .validate_Xt(); ranks are complete.
 .validate_rank <- function(rank, data_info) {
   components <- c("r1", "l1", "r2", "l2", "kr", "kc", "kr_m", "kc_m")
-  if (!is.list(rank) || is.data.frame(rank) || length(rank) != length(components) ||
+  required_components <- if (inherits(rank, "mmefm_rank")) c(components, "diagnostics") else components
+  if (!is.list(rank) || is.data.frame(rank) || length(rank) != length(required_components) ||
       is.null(names(rank)) || anyNA(names(rank)) || anyDuplicated(names(rank)) ||
-      !setequal(names(rank), components)) {
-    stop("rank must be a complete named list containing exactly r1, l1, r2, l2, kr, kc, kr_m, and kc_m.")
+      !setequal(names(rank), required_components)) {
+    stop("rank must be a complete named list containing exactly r1, l1, r2, l2, kr, kc, kr_m, and kc_m; mmefm_rank objects must also contain diagnostics.")
   }
 
-  ranks <- rank[components]
+  ranks <- unclass(rank)[components]
   for (component in components) {
     values <- ranks[[component]]
     global <- component %in% c("r1", "l1", "kr", "kc")
