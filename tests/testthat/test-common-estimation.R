@@ -264,3 +264,27 @@ test_that("rectangular global ranks retain vectorization and factor dimensions",
     }
   }
 })
+
+test_that("Van Loan array permutation preserves the rectangular block ordering", {
+  p <- 3L
+  q <- 4L
+  kr <- 2L
+  kc <- 3L
+  Xi <- matrix(as.numeric(seq_len(p * q * kr * kc)), p * q, kr * kc)
+  expected <- matrix(0, p * kr, q * kc)
+  for (j in seq_len(kc)) {
+    for (i in seq_len(q)) {
+      rows <- (i - 1L) * p + seq_len(p)
+      cols <- (j - 1L) * kr + seq_len(kr)
+      expected[, (j - 1L) * q + i] <- as.vector(Xi[rows, cols, drop = FALSE])
+    }
+  }
+  rearranged <- aperm(array(Xi, dim = c(p, q, kr, kc)), c(1L, 3L, 2L, 4L))
+  dim(rearranged) <- c(p * kr, q * kc)
+  expect_identical(rearranged, expected)
+
+  triplet <- svd(expected, nu = 1L, nv = 1L)
+  rank_one <- triplet$d[1L] * tcrossprod(triplet$u[, 1L], triplet$v[, 1L])
+  factors <- .van_loan_factors(Xi, kr, kc, p, q)
+  expect_equal(tcrossprod(as.vector(factors$Q), as.vector(factors$J)), rank_one, tolerance = 1e-12)
+})

@@ -15,14 +15,9 @@
 
 # Rearrange the J-by-Q blocks so a Kronecker product becomes a rank-one matrix.
 .van_loan_factors <- function(Xi, kr, kc, p = kr, q = kc) {
-  rearranged <- matrix(0, p * kr, q * kc)
-  for (j in seq_len(kc)) {
-    for (i in seq_len(q)) {
-      rows <- (i - 1L) * p + seq_len(p)
-      cols <- (j - 1L) * kr + seq_len(kr)
-      rearranged[, (j - 1L) * q + i] <- as.vector(Xi[rows, cols, drop = FALSE])
-    }
-  }
+  Xi_array <- array(Xi, dim = c(p, q, kr, kc))
+  rearranged <- aperm(Xi_array, c(1L, 3L, 2L, 4L))
+  dim(rearranged) <- c(p * kr, q * kc)
   triplet <- svd(rearranged, nu = 1L, nv = 1L)
   if (!is.finite(triplet$d[1L]) || triplet$d[1L] <= 0) {
     stop("Van Loan rearrangement has no finite positive leading singular value.")
