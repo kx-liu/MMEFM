@@ -1,0 +1,144 @@
+---
+title: "Getting started with MMEFM"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with MMEFM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(MMEFM)
+```
+
+## Data structure and model components
+
+MMEFM models several matrix-valued time series while separating shared variation from group-specific variation. The input `Xt` is a list of at least two finite numeric arrays. Group m has dimensions `T x p_m x q_m`, with time first, rows second, and columns third. All groups share T; spatial dimensions may differ. Names are optional, but supplied group names must be nonempty and unique.
+
+For group m, the model separates a global and local grand mean, global and local row main effects, global and local column main effects, and global and local matrix-factor interactions:
+
+\[
+\begin{aligned}
+Y_t^{(m)} ={}& (\mu_t + \mu_t^{(m)})\mathbf{1}_{p_m}\mathbf{1}_{q_m}' \\
+&+ (A_{1,m}\alpha_t + A_{2,m}\alpha_t^{(m)})\mathbf{1}_{q_m}'
+ + \mathbf{1}_{p_m}(B_{1,m}\beta_t + B_{2,m}\beta_t^{(m)})' \\
+&+ Q_m G_t J_m' + R_m F_t^{(m)} C_m' + E_t^{(m)}.
+\end{aligned}
+\]
+
+Global scores describe shared temporal variation, with group-specific loadings translating it into each group's matrix coordinates. Local scores and interactions describe variation specific to a group. Main effects are additive across rows or columns; interactions represent joint row-column variation.
+
+## Simulating a dataset
+
+Use three named groups with different spatial dimensions and one factor in each rank class. The generator returns data and statistical truth; `simulation$rank` is known because we specified the generating model.
+
+```{r simulation}
+rank <- list(r1 = 1L, l1 = 1L, r2 = c(a = 1L, b = 1L, c = 1L), l2 = c(a = 1L, b = 1L, c = 1L),
+             kr = 1L, kc = 1L, kr_m = c(a = 1L, b = 1L, c = 1L), kc_m = c(a = 1L, b = 1L, c = 1L))
+simulation <- gen_MMEFM(T = 40L, p = c(a = 6L, b = 7L, c = 8L), q = c(a = 7L, b = 8L, c = 6L),
+                        rank = rank, burn = 20L, filter_length = 40L, seed = 2026L)
+Xt <- simulation$Xt
+rank <- simulation$rank
+lapply(Xt, dim)
+```
+
+This example uses Gaussian innovations and the default zero-memory specifications with short-memory dynamics. The generator also supports raw Student-t innovations, general piecewise-memory specifications, and `store_components = TRUE` for storing all signal and error components. Raw Student-t draws are not variance-standardized; simulation permits degrees of freedom that need not satisfy theoretical moment assumptions.
+
+For detection experiments, `active_global` can restrict global common interactions to zero or at least two groups. It zeroes inactive global common loadings without changing the nominal positive ranks or the global factor series. The finite-sample generator does not enforce every asymptotic error regularity condition; see `?gen_MMEFM` for its numerical-DGP conventions.
+
+## Rank specification and feasibility
+
+A manual rank specification must contain all eight fields. Global ranks are scalar positive whole numbers; local ranks are positive whole-number vectors with one entry per group. Named local vectors are matched to named data groups; unnamed vectors follow data order.
+
+| Component | Global rank | Group-local rank |
+|:--|:--|:--|
+| Row main effects | `r1` ($r_1$) | `r2[m]` ($r_2^{(m)}$) |
+| Column main effects | `l1` ($l_1$) | `l2[m]` ($l_2^{(m)}$) |
+| Row common loadings | `kr` ($k_r$) | `kr_m[m]` ($k_r^{(m)}$) |
+| Column common loadings | `kc` ($k_c$) | `kc_m[m]` ($k_c^{(m)}$) |
+
+Under IC1, loading columns are orthogonal to the constant spatial direction. Together with full-rank separation, this requires, for every group:
+
+```text
+r1 + r2[m]   <= p_m - 1
+kr + kr_m[m] <= p_m - 1
+l1 + l2[m]   <= q_m - 1
+kc + kc_m[m] <= q_m - 1
+```
+
+Equality at these centered dimensions is allowed. The generator additionally requires `r1 + r2[m] <= T` and `l1 + l2[m] <= T` to construct orthogonal global/local temporal main scores. These generator temporal sums are not universal estimation constraints. For estimation, global main ranks must not exceed T; Van Loan alignment or refitting also requires `kr * kc <= T`. Dimension checks do not guarantee nonsingular Gram systems.
+
+For real data, supply a scientifically justified complete rank or estimate it. `select_MMEFM_rank()` uses unperturbed consecutive eigenvalue ratios over all available indices. Global ranks use indexwise maxima of group eigenvalue spectra; local ranks use their own group spectra. The eight ranks are selected independently of the combined feasibility constraints, which are checked afterward. Global common ranks are updated within the iterative projection procedure.
+
+The following commands are optional illustrations and are not evaluated in this vignette:
+
+```{r automatic-ranks, eval=FALSE}
+selected_rank <- select_MMEFM_rank(Xt, K0 = 8L, max_iter = 50L, seed = 2026L)
+automatic_fit <- est_MMEFM(Xt, rank = NULL, K0 = 8L, max_iter = 50L, seed = 2026L)
+```
+
+`rank = NULL` selects ranks before performing a fresh known-rank fit. Automatic selection need not recover the truth on a small noisy sample. If independently selected ranks violate the centered combined bounds, selection errors without capping or repairing them. The remaining workflow uses the known simulation rank.
+
+## Model estimation
+
+```{r estimation}
+fit <- est_MMEFM(Xt, rank = rank, K0 = 8L, max_iter = 50L, tol = 1e-4, seed = 2026L)
+fit
+summary(fit)
+```
+
+The result is an `mmefm_fit` with nested `main_effect`, `common_component`, `check_Y`, and `convergence` information, along with the call, dimensions, and ranks. Here we use the defaults: Van Loan alignment, Van Loan refitting, and `lambda = 0`. Procrustes alignment and ALS refitting are separate optional choices; selecting one does not imply selecting the other. The ridge argument applies only to main-effect Gram systems.
+
+Factor coordinates are not uniquely identified: equivalent signs or rotations can represent the same fitted component. Estimated and generating loadings should therefore not be compared entrywise as a recovery criterion. Iteration-limit warnings retain final iterates; inspect `fit$convergence` when assessing such warnings. Singular unregularized numerical systems error without fallback or silent rank repair.
+
+## Inspecting and reconstructing fitted components
+
+```{r fitted-components}
+predicted <- fitted(fit)
+global_main <- fitted(fit, component = "global_main")
+local_main <- fitted(fit, component = "local_main")
+global_common <- fitted(fit, component = "global_common")
+local_common <- fitted(fit, component = "local_common")
+errors <- residuals(fit)
+lapply(predicted, dim)
+vapply(errors, function(x) sqrt(mean(x^2)), numeric(1L))
+```
+
+Each reconstruction is a group list with the same names and array dimensions as `Xt`. By default, `fitted()` sums the four structured components; `component = "main"` sums global and local main effects. `residuals()` subtracts the full structured fitted signal from the observed arrays reconstructed from the fit's retained direct estimates and `check_Y`. A residual RMS is a descriptive sample summary, not a theoretical consistency rate.
+
+The final structured main effects use estimated factor scores and refitted global loadings. They differ from `fit$main_effect$direct`, which stores the direct grand mean (`c_hat`), centered row means (`a_hat`), and centered column means (`b_hat`). `fit$check_Y` subtracts those direct additive terms from the observations; it is the residual used for common-component estimation, not the final model residual returned by `residuals(fit)`.
+
+## Global common-factor detection and screening
+
+**B = 3 is only a documentation-size demonstration and does not give reliable production bootstrap calibration.** This example does not require detection of every truly active group.
+
+```{r detection}
+detection <- detect_MMEFM_global(fit, B = 3L, K0 = 8L, max_iter = 50L, tol = 1e-4,
+                                 parallel = FALSE, seed = 2026L)
+detection
+detection$statistic
+detection$selected
+```
+
+The detector uses the fit's direct residuals `check_Y`, divides each group by its residual RMS, and re-estimates initial global loading spaces. It does not reuse the fitted global loadings. Each $S_{G,m}$ compares the strongest squared cross-group covariance of projected global-core coordinates with the square of the strongest within-group projected-coordinate mean square.
+
+Bootstrap replications hold the reference group fixed (group 1 by default), independently circularly shift the other groups' whole time series, and re-estimate loading spaces at the supplied ranks. A single Type-8 empirical $(1-\alpha)$ quantile of bootstrap second-largest statistics supplies the cutoff. Global existence requires the observed second-largest statistic to strictly exceed it. Final screening selects groups strictly above the same cutoff only if the existence gate rejects and at least two groups exceed it; otherwise selection is empty.
+
+Whole-sample circular shifts assume a stationary segment. The ability to simulate changing memory does not justify this bootstrap for arbitrary nonstationary piecewise data.
+
+## Optional parallel bootstrap
+
+This illustration is **not evaluated** and launches no cluster during vignette building:
+
+```{r parallel-bootstrap, eval=FALSE}
+parallel_detection <- detect_MMEFM_global(fit, B = 3L, K0 = 8L, max_iter = 50L,
+                                          parallel = TRUE, num.cores = 4L, seed = 2026L)
+```
+
+The PSOCK backend supports Windows, macOS, and Linux and requires the current installed MMEFM namespace. Actual workers are `min(B, num.cores)`; one worker or B = 1 uses serial execution. Bootstrap shifts and half-panel candidate indices are prepared on the master in serial RNG order, so the same seed gives matching replication-specific randomness in serial and parallel modes. Caller RNG state is preserved, and workers are cleaned up on return or error.
+
+Parallel execution adds memory use and process-startup overhead, so a small B can be slower. Choose cores within your scheduler allocation. Nested worker pools and multithreaded BLAS can oversubscribe resources; when Monte Carlo replications run in parallel externally, normally leave detector-level `parallel = FALSE`.
+
+## Interpretation and practical cautions
+
+Known generating ranks make this example reproducible, but real-data ranks require statistical judgment. Assess convergence and numerical failures rather than interpreting a successful call as evidence that model assumptions hold. Neither sample reconstruction summaries nor a tiny bootstrap establish asymptotic performance. See `?gen_MMEFM`, `?select_MMEFM_rank`, `?est_MMEFM`, and `?detect_MMEFM_global` for complete argument and return-value contracts.
