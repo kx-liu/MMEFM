@@ -26,7 +26,7 @@ detect_MMEFM_global(
 
 \item{B}{Positive whole-number bootstrap size. The default is 199. Values such as 3 are suitable only for illustrative examples, not reliable calibration.}
 
-\item{alpha}{Finite significance level strictly between zero and one, used for the bootstrap cutoff.}
+\item{alpha}{Nominal calibration level strictly between zero and one, used to determine the bootstrap cutoff.}
 
 \item{reference_group}{Integer index from 1 through M identifying the group held fixed during bootstrap shifts.}
 

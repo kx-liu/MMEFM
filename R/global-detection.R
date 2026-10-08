@@ -187,7 +187,7 @@
 #' @param Xt A list of finite `T x p_m x q_m` arrays as in [est_MMEFM()], or an `mmefm_fit`. Arrays are reduced to direct additive residuals `check_Y`; a fit supplies its stored `check_Y`.
 #' @param rank NULL to select ranks for array input or use a fit's ranks. Alternatively, supply a complete eight-field rank list or `mmefm_rank` as in [est_MMEFM()]. Supplied ranks override fit ranks. Rank values are validated, and any rank-object diagnostics are retained.
 #' @param B Positive whole-number bootstrap size. The default is 199. Values such as 3 are suitable only for illustrative examples, not reliable calibration.
-#' @param alpha Finite significance level strictly between zero and one, used for the bootstrap cutoff.
+#' @param alpha Nominal calibration level strictly between zero and one, used to determine the bootstrap cutoff.
 #' @param reference_group Integer index from 1 through M identifying the group held fixed during bootstrap shifts.
 #' @param parallel One nonmissing logical. FALSE runs the bootstrap serially. TRUE uses PSOCK workers on Windows, macOS, and Linux when B and `num.cores` both exceed one.
 #' @param num.cores Positive whole-number maximum worker count. At most `min(B, num.cores)` workers are used; one worker or B = 1 gives serial execution. Stay within the available resource allocation.
