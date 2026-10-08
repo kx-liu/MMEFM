@@ -14,7 +14,9 @@ detect_MMEFM_global(
   max_iter = 20L,
   tol = 1e-04,
   seed = 2026L,
-  verbose = FALSE
+  verbose = FALSE,
+  parallel = FALSE,
+  num.cores = 4L
 )
 }
 \arguments{
@@ -37,6 +39,10 @@ detect_MMEFM_global(
 \item{seed}{Nonnegative whole number within R's integer range controlling Algorithm 1's random directions. The same seed gives reproducible results under the same RNG kind; the caller's prior RNG state is restored on return or error.}
 
 \item{verbose}{One nonmissing logical indicating whether to report Algorithm 1 progress.}
+
+\item{parallel}{One nonmissing logical. FALSE preserves sequential bootstrap execution; TRUE uses a PSOCK cluster on Windows, macOS, and Linux when both B and num.cores exceed one.}
+
+\item{num.cores}{Positive whole-number maximum worker count, default 4. Actual workers are min(B, num.cores); one worker or B = 1 uses serial execution without a cluster. Choose a count within your scheduler allocation.}
 }
 \value{
 An \code{mmefm_global_detection} list containing exactly \code{call}, group \code{statistic}, observed \code{second_largest}, \code{cutoff}, logical \code{exists}, group logical vectors \code{initial_selected} and \code{selected}, group RMS \code{scale}, canonical \code{rank}, and \code{bootstrap}. The bootstrap list contains exactly \code{B}, \code{alpha}, \code{reference_group}, and the length-B numeric calibration sample \code{second_largest}. Group-indexed vectors preserve optional names. Loading matrices and residual workspaces are not returned.
@@ -52,4 +58,6 @@ S_G,m sums, over other groups, the largest squared cross covariance between proj
 Algorithm 2 holds the reference group fixed and independently circularly shifts every other group's whole time series uniformly by 0 through T-1. Every replication re-estimates Q/J and denominator loading spaces at fixed ranks. One Type-8 empirical (1-alpha) quantile of bootstrap second-largest S_G values calibrates both existence and screening. Existence requires the observed second-largest statistic to strictly exceed the cutoff. Final screening is empty unless existence rejects and at least two groups strictly exceed that same cutoff.
 
 All detector randomness uses one scoped seed after any separately scoped rank selection; caller RNG state is restored on success and error. Observed projection non-convergence warns once; bootstrap non-convergence warns once in aggregate. Final iterates remain usable. Invalid scales, denominators, and numerical failures error without floors, repair, or discarded draws; bootstrap errors identify the replication. Whole-sample circular shifts assume a single stationary segment.
+
+Parallel bootstrap shifts and half-panel indices are pre-generated on the master in the serial RNG order. Workers compute deterministically, giving the same replication-specific random inputs and statistics under the same seed regardless of scheduling. Workers load the master's installed MMEFM namespace and are cleaned up on completion or error. Parallel execution adds memory and process-startup overhead. Nested worker pools and multithreaded BLAS can oversubscribe resources; when running Monte Carlo replications in parallel externally, normally leave parallel = FALSE.
 }

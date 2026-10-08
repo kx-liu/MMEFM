@@ -8,6 +8,7 @@ License: MIT + file LICENSE
 URL: https://github.com/kx-liu/MMEFM
 BugReports: https://github.com/kx-liu/MMEFM/issues
 Depends: R (>= 4.1.0)
+Imports: parallel
 Suggests: testthat (>= 3.0.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

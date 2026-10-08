@@ -224,3 +224,113 @@ test_that("bootstrap draws follow one stream and re-estimate at fixed ranks", {
   result <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 8L)
   expect_identical(result$bootstrap$second_largest, expected)
 })
+
+test_that("precomputed shifts and half-panels reproduce the sampled path without RNG", {
+  x <- .fit_fixture()
+  Z <- .standardize_detection_residuals(.main_effect_moments(x$Xt)$check_Y)$check_Z
+  set.seed(2026L)
+  shifts <- integer(length(Z))
+  for (m in seq_along(Z)) if (m != 2L) shifts[m] <- sample.int(16L, 1L) - 1L
+  indices <- vector("list", length(Z))
+  for (m in seq_along(Z)) {
+    q <- dim(Z[[m]])[3L]
+    indices[[m]] <- vector("list", 4L)
+    for (k in seq_len(4L)) indices[[m]][[k]] <- sample(q, floor(q / 2))
+  }
+  saved <- .Random.seed
+  shifted <- .circular_shift_detection_groups(Z, 2L, shifts)
+  expect_identical(.Random.seed, saved)
+  expect_identical(shifted$b, Z$b)
+  for (m in seq_along(Z)) {
+    index <- 1L + ((seq_len(16L) - 1L + shifts[m]) %% 16L)
+    expect_identical(shifted[[m]], Z[[m]][index, , , drop = FALSE])
+  }
+  expect_identical(.circular_shift_detection_groups(Z, 2L, integer(3L)), Z)
+  fixed <- .initial_common_loadings(shifted, 1L, 1L, K0 = 4L, initial_candidate_indices = indices)
+  expect_identical(.Random.seed, saved)
+  inputs <- list(check_Z = Z, rank = x$rank, reference_group = 2L, K0 = 4L, max_iter = 20L, tol = 1e-4)
+  draw <- .bootstrap_global_detection_one(list(b = 1L, shifts = shifts, initial_candidate_indices = indices), inputs)
+  expect_identical(.Random.seed, saved)
+  set.seed(2026L)
+  sampled_shifted <- .circular_shift_detection_groups(Z, 2L)
+  sampled <- .initial_common_loadings(sampled_shifted, 1L, 1L, K0 = 4L)
+  expect_identical(sampled_shifted, shifted)
+  expect_identical(sampled, fixed)
+  expect_identical(draw$second_largest, .global_detection_statistic(shifted, x$rank, sampled$Q_hat, sampled$J_hat)$second_largest)
+  expect_identical(draw$converged, sampled$converged)
+})
+
+test_that("parallel controls are validated even for serial execution", {
+  x <- .fit_fixture()
+  for (value in list(NA, 1, c(TRUE, FALSE))) {
+    expect_error(detect_MMEFM_global(x$Xt, x$rank, B = 2L, parallel = value), "parallel")
+  }
+  for (value in list(0, -1, 1.5, NA, Inf, .Machine$integer.max + 1)) {
+    expect_error(detect_MMEFM_global(x$Xt, x$rank, B = 2L, parallel = FALSE, num.cores = value), "num.cores")
+  }
+})
+
+test_that("PSOCK bootstrap exactly matches serial results and preserves caller RNG", {
+  x <- .fit_fixture()
+  existed <- exists(".Random.seed", .GlobalEnv, inherits = FALSE)
+  if (existed) old_seed <- .Random.seed
+  on.exit({
+    if (existed) assign(".Random.seed", old_seed, .GlobalEnv) else if (exists(".Random.seed", .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
+  })
+  set.seed(71L)
+  saved <- .Random.seed
+  kind <- RNGkind()
+  serial <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 4L, reference_group = 2L)
+  parallel_fit <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 4L, reference_group = 2L, parallel = TRUE, num.cores = 2L)
+  expect_identical(.Random.seed, saved)
+  expect_identical(RNGkind(), kind)
+  expect_identical(parallel_fit[-1L], serial[-1L])
+  expect_identical(class(parallel_fit), class(serial))
+  expect_identical(names(parallel_fit), names(serial))
+  expect_identical(names(parallel_fit$bootstrap), names(serial$bootstrap))
+  rm(".Random.seed", envir = .GlobalEnv)
+  again <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 4L, reference_group = 2L, parallel = TRUE, num.cores = 2L)
+  expect_false(exists(".Random.seed", .GlobalEnv, inherits = FALSE))
+  expect_identical(again[-1L], serial[-1L])
+})
+
+test_that("one worker and one draw retain serial execution", {
+  x <- .fit_fixture()
+  serial <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 4L)
+  one_worker <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 4L, parallel = TRUE, num.cores = 1)
+  expect_identical(one_worker[-1L], serial[-1L])
+  serial <- detect_MMEFM_global(x$Xt, x$rank, B = 1L, K0 = 4L)
+  one_draw <- detect_MMEFM_global(x$Xt, x$rank, B = 1L, K0 = 4L, parallel = TRUE, num.cores = 2L)
+  expect_identical(one_draw[-1L], serial[-1L])
+})
+
+test_that("worker numerical failures identify the draw and clean up sockets and RNG", {
+  x <- .fit_fixture()
+  rank <- .validate_rank(x$rank, .validate_Xt(x$Xt))
+  Z <- .standardize_detection_residuals(.main_effect_moments(x$Xt)$check_Y)$check_Z
+  # The same degenerate denominator fixture used by the serial failure regression.
+  Z$a[] <- 0
+  set.seed(71L)
+  saved <- .Random.seed
+  connections <- showConnections(all = TRUE)
+  expect_error(.with_preserved_seed(2026L,
+    .bootstrap_global_detection(Z, rank, 2L, 1L, 4L, 20L, 1e-4, FALSE, TRUE, 2L)),
+    "Bootstrap replication 1 failed:.*denominator.*a")
+  expect_identical(.Random.seed, saved)
+  expect_identical(showConnections(all = TRUE), connections)
+})
+
+test_that("parallel projection limits produce only observed and aggregate warnings", {
+  x <- .fit_fixture()
+  set.seed(91L)
+  Y <- lapply(x$Xt, function(a) a + array(rnorm(length(a), sd = 0.05), dim(a)))
+  messages <- character()
+  withCallingHandlers(detect_MMEFM_global(Y, x$rank, B = 2L, K0 = 4L, max_iter = 1L,
+                                          tol = 1e-15, parallel = TRUE, num.cores = 2L), warning = function(w) {
+    messages <<- c(messages, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  })
+  expect_length(messages, 2L)
+  expect_match(messages[1L], "Observed detection projection")
+  expect_match(messages[2L], "[1-2] of 2 bootstrap projections")
+})

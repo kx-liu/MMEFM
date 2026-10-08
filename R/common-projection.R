@@ -71,7 +71,7 @@
 }
 
 # Algorithm 1 updates automatic ranks inside the projection iteration; the caller owns the RNG seed.
-.initial_common_loadings <- function(check_Y, kr = NULL, kc = NULL, K0 = 20L, max_iter = 20L, tol = 1e-4, verbose = FALSE) {
+.initial_common_loadings <- function(check_Y, kr = NULL, kc = NULL, K0 = 20L, max_iter = 20L, tol = 1e-4, verbose = FALSE, initial_candidate_indices = NULL) {
   if (is.null(kr) != is.null(kc)) stop("kr and kc must either both be supplied or both be NULL.")
   automatic_rank <- is.null(kr)
   M <- length(check_Y)
@@ -81,7 +81,8 @@
     pools[[m]] <- vector("list", K0)
     for (k in seq_len(K0)) {
       v <- matrix(0, q_m, 1L)
-      v[sample(q_m, floor(q_m / 2)), 1L] <- 1
+      indices <- if (is.null(initial_candidate_indices)) sample(q_m, floor(q_m / 2)) else initial_candidate_indices[[m]][[k]]
+      v[indices, 1L] <- 1
       pools[[m]][[k]] <- v / sqrt(sum(v^2))
     }
   }
