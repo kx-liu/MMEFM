@@ -2,8 +2,10 @@
 
 S3method(fitted,mmefm_fit)
 S3method(print,mmefm_fit)
+S3method(print,mmefm_global_detection)
 S3method(print,summary.mmefm_fit)
 S3method(residuals,mmefm_fit)
 S3method(summary,mmefm_fit)
+export(detect_MMEFM_global)
 export(est_MMEFM)
 export(select_MMEFM_rank)
