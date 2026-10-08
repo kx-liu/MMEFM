@@ -120,19 +120,20 @@
     }
     cl <- parallel::makePSOCKcluster(min(B, num.cores))
     on.exit(parallel::stopCluster(cl), add = TRUE)
-    worker_setup <- function(package_path, library_paths, inputs) {
+    worker_setup <- function(package_path, library_paths) {
       .libPaths(c(dirname(package_path), library_paths))
       namespace <- loadNamespace("MMEFM", lib.loc = dirname(package_path))
       if (normalizePath(getNamespaceInfo(namespace, "path")) != normalizePath(package_path)) {
         stop("PSOCK worker loaded a different MMEFM installation.")
       }
-      # Fixed arrays and controls are sent once per worker, separately from compact jobs.
-      assign(".mmefm_detection_inputs", inputs, envir = .GlobalEnv)
       NULL
     }
     # Resolve the installation before deserializing package functions; do not ship the master's call frame.
     environment(worker_setup) <- baseenv()
-    parallel::clusterCall(cl, worker_setup, package_path, .libPaths(), inputs)
+    parallel::clusterCall(cl, worker_setup, package_path, .libPaths())
+    # Fixed arrays and controls are sent once per worker, separately from compact jobs.
+    .mmefm_detection_inputs <- inputs
+    parallel::clusterExport(cl, ".mmefm_detection_inputs", envir = environment())
     if (verbose) cat("Running", B, "bootstrap replications on", min(B, num.cores), "PSOCK workers.\n")
     draws <- parallel::parLapplyLB(cl, jobs, .bootstrap_global_detection_one)
     for (b in seq_len(B)) {

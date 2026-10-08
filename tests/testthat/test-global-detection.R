@@ -281,7 +281,9 @@ test_that("PSOCK bootstrap exactly matches serial results and preserves caller R
   saved <- .Random.seed
   kind <- RNGkind()
   serial <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 4L, reference_group = 2L)
+  global_names <- ls(.GlobalEnv, all.names = TRUE)
   parallel_fit <- detect_MMEFM_global(x$Xt, x$rank, B = 3L, K0 = 4L, reference_group = 2L, parallel = TRUE, num.cores = 2L)
+  expect_identical(ls(.GlobalEnv, all.names = TRUE), global_names)
   expect_identical(.Random.seed, saved)
   expect_identical(RNGkind(), kind)
   expect_identical(parallel_fit[-1L], serial[-1L])
