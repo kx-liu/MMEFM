@@ -1,5 +1,7 @@
 # MMEFM 0.0.0.9000
 
+* Export `gen_piecewise_arfima()` with shared or series-specific piecewise memory, optional filter information, and preserved caller RNG state.
+* Support stable AR(p) coefficients for latent (`phi`) and error (`error_phi`) series in `gen_MMEFM()`, preserving scalar AR(1) outputs exactly.
 * Implement main-effect and common-component estimation with supplied or automatically selected ranks, Van Loan or Procrustes alignment, and Van Loan or ALS refitting.
 * Implement manuscript eigenvalue-ratio rank selection, with indexwise cross-group eigenvalue maxima for global ranks and full consecutive-ratio search ranges.
 * Add structured `mmefm_fit` results with print, summary, fitted-component, and residual methods.

@@ -99,6 +99,49 @@
   }
 }
 
+.validate_simulation_ar <- function(phi, label) {
+  if (!is.numeric(phi) || !is.null(dim(phi)) || !length(phi) || any(!is.finite(phi))) {
+    stop(label, " must be a nonempty vector of finite AR coefficients.")
+  }
+  if (length(phi) == 1L) {
+    if (abs(phi) >= 1) {
+      stop(label, " must have absolute value below one for AR(1).")
+    }
+  } else {
+    nonzero <- which(phi != 0)
+    if (length(nonzero)) {
+      roots <- polyroot(c(1, -phi[seq_len(max(nonzero))]))
+      if (any(!is.finite(roots)) || any(Mod(roots) <= 1)) {
+        stop(label, " must have all AR polynomial roots strictly outside the unit circle.")
+      }
+    }
+  }
+  invisible(NULL)
+}
+
+.simulation_ar_filter <- function(phi, filter_length) {
+  # Keep the established scalar power calculation, including its rounding.
+  if (length(phi) == 1L) {
+    return(phi^(0:filter_length))
+  }
+  coefficients <- numeric(filter_length + 1)
+  coefficients[1L] <- 1
+  for (k in seq_len(filter_length)) {
+    lags <- seq_len(min(length(phi), k))
+    coefficients[k + 1L] <- sum(phi[lags] * coefficients[k - lags + 1L])
+  }
+  coefficients
+}
+
+.simulation_fractional_filter <- function(d, filter_length) {
+  coefficients <- numeric(filter_length + 1)
+  coefficients[1L] <- 1
+  for (w in seq_len(filter_length)) {
+    coefficients[w + 1L] <- coefficients[w] * (w - 1 + d) / w
+  }
+  coefficients
+}
+
 # The retained sample follows two full filter warmups, as in the numerical DGP.
 .simulation_series <- function(n_series, TT, spec, phi, innovation, df, burn, filter_length) {
   if (n_series == 0L) {
@@ -110,24 +153,28 @@
   if (all(spec$d == 0)) {
     series <- innovations
     if (n_all > 1L) {
-      for (t in seq.int(2L, n_all)) {
-        series[t, ] <- phi * series[t - 1L, ] + innovations[t, ]
+      if (length(phi) == 1L) {
+        for (t in seq.int(2L, n_all)) {
+          series[t, ] <- phi * series[t - 1L, ] + innovations[t, ]
+        }
+      } else {
+        for (t in seq.int(2L, n_all)) {
+          for (lag in seq_len(min(length(phi), t - 1L))) {
+            series[t, ] <- series[t, ] + phi[lag] * series[t - lag, ]
+          }
+        }
       }
     }
     return(series[keep, , drop = FALSE])
   }
-  short <- as.matrix(stats::filter(innovations, phi^(0:filter_length), method = "convolution", sides = 1L))
+  short <- as.matrix(stats::filter(
+    innovations, .simulation_ar_filter(phi, filter_length), method = "convolution", sides = 1L
+  ))
   result <- matrix(0, TT, n_series)
   end <- cumsum(spec$seg_lens)
   start <- c(1L, end[-length(end)] + 1L)
   for (segment in seq_along(spec$d)) {
-    coefficients <- numeric(filter_length + 1)
-    coefficients[1L] <- 1
-    if (filter_length > 0L) {
-      for (w in seq_len(filter_length)) {
-        coefficients[w + 1L] <- coefficients[w] * (w - 1 + spec$d[segment]) / w
-      }
-    }
+    coefficients <- .simulation_fractional_filter(spec$d[segment], filter_length)
     first <- keep[start[segment]]
     last <- keep[end[segment]]
     block <- short[seq.int(first - filter_length, last), , drop = FALSE]
@@ -166,14 +213,14 @@
 #' @param main_strength_local NULL to repeat global strengths, or a group list of length-two strengths.
 #' @param common_strength_global,common_strength_local NULL for unit strengths, or exactly `list(row = ..., column = ...)`, each a group list. Entries are scalar or one strength per corresponding loading column, in (0.5, 1]. Named group lists are matched to p order; unnamed lists are positional.
 #' @param memory NULL for two zero-memory segments for all latent components, or exactly a list with `mu_global`, `mu_local`, `alpha`, `beta`, `G`, `F`. A basic spec is a numeric vector of finite d < 0.5 or `list(d = ..., seg_lens = ...)` with positive whole segment lengths summing to T. Numeric specs split T equally with remainder in the final segment. Means and G use basic specs. F uses a basic spec or group list of basic specs. Alpha/beta use a basic spec or `list(global = <basic>, local = <basic or group list>)`. Local mean innovations share one spec because group demeaning mixes them.
-#' @param phi,error_phi Finite geometric short-memory coefficients with absolute value below one, for latent and error series respectively.
+#' @param phi,error_phi Nonempty finite numeric AR coefficient vectors for latent and error series respectively. A scalar specifies AR(1) with absolute value below one. For AR(p), every root of `1 - phi[1]*z - ... - phi[p]*z^p` (and analogously for error_phi) must lie strictly outside the unit circle; individual coefficients need not have absolute value below one.
 #' @param error_rank_global Length-two nonnegative whole row/column nuisance ranks fitting all groups.
 #' @param error_rank_local NULL for c(2, 2) in every group, or a group list of nonnegative whole row/column nuisance ranks fitting each group. Zero nuisance ranks produce zero components.
 #' @param error_loading_zero_prob Probability in [0, 1) of independently zeroing each Gaussian error-loading entry.
 #' @param innovation Gaussian (default) or raw Student-t temporal innovations. Loadings and error scale entries always use Gaussian draws.
 #' @param df Finite positive Student-t degrees of freedom, retained in metadata even for Gaussian. Raw Student-t draws are not variance-standardized; theoretical fourth-moment conditions require an appropriate df, but simulation permits any positive df.
 #' @param burn Nonnegative whole-number burn-in within integer range.
-#' @param filter_length NULL for `min(2000, max(200, 5*T))`, or a nonnegative whole fractional/geometric filter truncation length. Zero-memory series use AR(1) recursion; other series use geometric convolution followed by segment-specific fractional filters.
+#' @param filter_length NULL for `min(2000, max(200, 5*T))`, or a nonnegative whole fractional/AR impulse-response filter truncation length. Zero-memory series use direct AR recursion; other series use truncated AR convolution followed by segment-specific fractional filters. Scalar AR(1) retains its established recursion and geometric filter.
 #' @param active_global NULL for all groups, a nonmissing logical length-M vector, or unique whole group indices (empty indices allowed). Zero or at least two active groups are permitted; a singleton errors. Ownership is applied after ordinary global draws by zeroing inactive Q/J. Nominal positive ranks and G remain unchanged.
 #' @param seed Nonnegative whole-number seed within integer range. Caller RNG state is preserved on success and error; RNG kind is unchanged.
 #' @param store_components One nonmissing logical. FALSE avoids storing seven additional full-array component lists; truth loadings and factor series are always returned.
@@ -297,10 +344,7 @@ gen_MMEFM <- function(T, p, q, rank, main_strength_global = c(1, 1), main_streng
   }
   memory <- .simulation_memory(memory, T, M, group_names)
   for (name in c("phi", "error_phi")) {
-    value <- get(name)
-    if (!is.numeric(value) || length(value) != 1L || !is.finite(value) || abs(value) >= 1) {
-      stop(name, " must be one finite number with absolute value below one.")
-    }
+    .validate_simulation_ar(get(name), name)
   }
   if (!is.numeric(df) || length(df) != 1L || !is.finite(df) || df <= 0) {
     stop("df must be one finite positive number.")

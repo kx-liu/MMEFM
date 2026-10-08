@@ -272,3 +272,102 @@ test_that("maximum centered spatial ranks and the temporal boundary are usable",
     expect_identical(qr(cbind(global$beta, local$beta[[m]]))$rank, unname(rank$l1 + rank$l2[m]))
   }
 })
+
+# Test-only oracle for the original scalar filtering and innovation order.
+.scalar_series_reference <- function(n_series, TT, spec, phi, innovation, df, burn, filter_length) {
+  if (n_series == 0L) {
+    return(matrix(0, TT, 0L))
+  }
+  n_all <- as.numeric(TT) + burn + 2 * filter_length
+  innovations <- matrix(.simulation_innovations(n_all * n_series, innovation, df), n_all, n_series)
+  keep <- burn + 2 * filter_length + seq_len(TT)
+  if (all(spec$d == 0)) {
+    series <- innovations
+    if (n_all > 1L) {
+      for (t in seq.int(2L, n_all)) {
+        series[t, ] <- phi * series[t - 1L, ] + innovations[t, ]
+      }
+    }
+    return(series[keep, , drop = FALSE])
+  }
+  short <- as.matrix(stats::filter(innovations, phi^(0:filter_length), method = "convolution", sides = 1L))
+  result <- matrix(0, TT, n_series)
+  end <- cumsum(spec$seg_lens)
+  start <- c(1L, end[-length(end)] + 1L)
+  for (segment in seq_along(spec$d)) {
+    coefficients <- numeric(filter_length + 1)
+    coefficients[1L] <- 1
+    for (w in seq_len(filter_length)) {
+      coefficients[w + 1L] <- coefficients[w] * (w - 1 + spec$d[segment]) / w
+    }
+    first <- keep[start[segment]]
+    last <- keep[end[segment]]
+    block <- short[seq.int(first - filter_length, last), , drop = FALSE]
+    if (spec$d[segment] != 0 && filter_length > 0L) {
+      block <- as.matrix(stats::filter(block, coefficients, method = "convolution", sides = 1L))
+    }
+    result[seq.int(start[segment], end[segment]), ] <-
+      block[seq.int(nrow(block) - spec$seg_lens[segment] + 1L, nrow(block)), , drop = FALSE]
+  }
+  result
+}
+
+test_that("scalar AR(1) simulation agrees exactly with the established engine", {
+  args <- .generator_args()
+  args$store_components <- TRUE
+  for (family in c("Gaussian", "Student-t")) {
+    for (nonzero in c(FALSE, TRUE)) {
+      args$innovation <- family
+      args$memory <- if (nonzero) {
+        list(mu_global = c(0.1, 0.2), mu_local = c(-0.2, 0.1), alpha = c(0.2, 0),
+             beta = c(0, 0.1), G = c(0.1, 0.2), F = c(0.2, 0.1))
+      } else NULL
+      actual <- do.call(gen_MMEFM, args)
+      expected <- local({
+        testthat::local_mocked_bindings(.simulation_series = .scalar_series_reference, .package = "MMEFM")
+        do.call(gen_MMEFM, args)
+      })
+      expect_identical(actual, expected)
+    }
+  }
+})
+
+test_that("stable AR(p) drives latent and error components without changing contracts", {
+  args <- .generator_args()
+  args$store_components <- TRUE
+  args$phi <- c(1.2, -0.5)
+  args$error_phi <- c(0.4, -0.2)
+  args$memory <- list(mu_global = c(0, 0.1), mu_local = c(-0.2, 0.1), alpha = c(0.2, 0),
+                      beta = c(0, 0.1), G = c(0.1, 0.2), F = c(0.2, 0.1))
+  set.seed(71L)
+  saved <- .Random.seed
+  x <- do.call(gen_MMEFM, args)
+  expect_identical(.Random.seed, saved)
+  expect_identical(x, do.call(gen_MMEFM, args))
+  expect_identical(names(x), c("Xt", "dimensions", "rank", "main_effect", "common_component",
+                              "error", "memory", "innovation", "components"))
+  for (m in seq_len(3L)) {
+    expect_true(all(is.finite(x$Xt[[m]])))
+    expect_equal(Reduce(`+`, lapply(x$components, function(values) values[[m]])), x$Xt[[m]], tolerance = 1e-13)
+  }
+  latent_only <- args
+  latent_only$error_phi <- 0.2
+  expect_identical(do.call(gen_MMEFM, latent_only)$main_effect, x$main_effect)
+  expect_identical(do.call(gen_MMEFM, latent_only)$common_component, x$common_component)
+  error_only <- args
+  error_only$phi <- 0.6
+  expect_identical(do.call(gen_MMEFM, error_only)$error, x$error)
+  for (name in c("phi", "error_phi")) {
+    for (value in list(c(1, 0), c(1.4, 0.1), numeric(), matrix(0.5), c(0.2, NA))) {
+      invalid <- args
+      invalid[[name]] <- value
+      expect_error(do.call(gen_MMEFM, invalid), name)
+    }
+  }
+  args$memory <- NULL
+  args$error_rank_global <- c(0L, 0L)
+  args$error_rank_local <- rep(list(c(0L, 0L)), 3L)
+  zero_nuisance <- do.call(gen_MMEFM, args)
+  expect_identical(dim(zero_nuisance$error$global$G), c(8L, 0L, 0L))
+  expect_true(all(is.finite(unlist(zero_nuisance$Xt))))
+})

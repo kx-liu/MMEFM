@@ -37,6 +37,7 @@ See the [Getting Started vignette](vignettes/getting-started.Rmd) for rank conve
 
 ## Main functionality
 
+- `gen_piecewise_arfima()` generates one or more Gaussian or raw Student-t piecewise fractional-memory series with a stable AR(p) short-memory component. Both `phi` and `error_phi` in `gen_MMEFM()` also support stable AR(p).
 - `gen_MMEFM()` simulates heterogeneous groups with Gaussian or raw Student-t innovations, general piecewise-memory specifications, optional global ownership sets, and optional full component storage.
 - `select_MMEFM_rank()` applies the manuscript's eigenvalue-ratio rules to select eight rank classes independently, then checks combined-rank feasibility. Infeasible combinations error rather than being repaired.
 - `est_MMEFM()` supports supplied and automatic ranks and returns an `mmefm_fit`. Use `summary()`, `fitted()` (including individual components), and `residuals()` to inspect the fit.

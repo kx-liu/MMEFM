@@ -43,7 +43,7 @@ gen_MMEFM(
 
 \item{memory}{NULL for two zero-memory segments for all latent components, or exactly a list with \code{mu_global}, \code{mu_local}, \code{alpha}, \code{beta}, \code{G}, \code{F}. A basic spec is a numeric vector of finite d < 0.5 or \code{list(d = ..., seg_lens = ...)} with positive whole segment lengths summing to T. Numeric specs split T equally with remainder in the final segment. Means and G use basic specs. F uses a basic spec or group list of basic specs. Alpha/beta use a basic spec or \verb{list(global = <basic>, local = <basic or group list>)}. Local mean innovations share one spec because group demeaning mixes them.}
 
-\item{phi, error_phi}{Finite geometric short-memory coefficients with absolute value below one, for latent and error series respectively.}
+\item{phi, error_phi}{Nonempty finite numeric AR coefficient vectors for latent and error series respectively. A scalar specifies AR(1) with absolute value below one. For AR(p), every root of \code{1 - phi[1]*z - ... - phi[p]*z^p} (and analogously for error_phi) must lie strictly outside the unit circle; individual coefficients need not have absolute value below one.}
 
 \item{error_rank_global}{Length-two nonnegative whole row/column nuisance ranks fitting all groups.}
 
@@ -57,7 +57,7 @@ gen_MMEFM(
 
 \item{burn}{Nonnegative whole-number burn-in within integer range.}
 
-\item{filter_length}{NULL for \code{min(2000, max(200, 5*T))}, or a nonnegative whole fractional/geometric filter truncation length. Zero-memory series use AR(1) recursion; other series use geometric convolution followed by segment-specific fractional filters.}
+\item{filter_length}{NULL for \code{min(2000, max(200, 5*T))}, or a nonnegative whole fractional/AR impulse-response filter truncation length. Zero-memory series use direct AR recursion; other series use truncated AR convolution followed by segment-specific fractional filters. Scalar AR(1) retains its established recursion and geometric filter.}
 
 \item{active_global}{NULL for all groups, a nonmissing logical length-M vector, or unique whole group indices (empty indices allowed). Zero or at least two active groups are permitted; a singleton errors. Ownership is applied after ordinary global draws by zeroing inactive Q/J. Nominal positive ranks and G remain unchanged.}
 
