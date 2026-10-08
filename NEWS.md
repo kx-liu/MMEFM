@@ -1,11 +1,8 @@
-# MMEFM 0.0.0.9000
+# MMEFM 0.1.0
 
-* Export `gen_piecewise_arfima()` with shared or series-specific piecewise memory, optional filter information, and preserved caller RNG state.
-* Support stable AR(p) coefficients for latent (`phi`) and error (`error_phi`) series in `gen_MMEFM()`, preserving scalar AR(1) outputs exactly.
-* Implement main-effect and common-component estimation with supplied or automatically selected ranks, Van Loan or Procrustes alignment, and Van Loan or ALS refitting.
-* Implement manuscript eigenvalue-ratio rank selection, with indexwise cross-group eigenvalue maxima for global ranks and full consecutive-ratio search ranges.
-* Add structured `mmefm_fit` results with print, summary, fitted-component, and residual methods.
-* Add global common-factor existence detection and group screening using a shared circular-shift bootstrap cutoff.
-* Add cross-platform PSOCK bootstrap execution with matching serial/parallel random inputs, preserved caller RNG state, and worker cleanup.
-* Add simulation with heterogeneous groups, Gaussian and raw Student-t innovations, piecewise memory, optional global ownership sets, and optional component storage.
-* Correct combined spatial-rank feasibility to the IC1-centered dimensions `p_m - 1` and `q_m - 1`, allowing equality without rank repair.
+* Simulate grouped matrix-valued time series with heterogeneous dimensions, Gaussian or raw Student-t innovations, and optional model-component storage.
+* Generate piecewise ARFIMA series with stable AR(p) dynamics and shared or series-specific fractional memory.
+* Estimate global and local main effects and common components at supplied or automatically selected ranks, with Van Loan alignment and refitting by default and optional Procrustes alignment and ALS refitting.
+* Select the eight loading rank classes using unperturbed eigenvalue ratios, indexwise cross-group maxima for global spectra, and full consecutive-ratio search ranges. Check combined ranks against the IC1-centered spatial dimensions without rank repair.
+* Return structured model fits with print and summary methods, fitted-component reconstruction, and final residuals.
+* Detect global common factors and screen participating groups using a shared circular-shift bootstrap cutoff, with optional PSOCK execution and matching serial/parallel random inputs.

@@ -1,7 +1,7 @@
 Package: MMEFM
 Type: Package
 Title: Multilevel Main Effects Matrix Factor Model Tools
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: person(given = "Kaixin", family = "Liu", email = "k.liu31@lse.ac.uk", role = c("aut", "cre"))
 Description: Provides estimation, rank selection, and simulation for grouped matrix-valued time series using the Multilevel Main Effects Matrix Factor Model. The model separates global and local grand means, row and column main effects, and bilinear interaction components, allowing nonstationary main effects under suitable conditions. A circular-shift bootstrap is used to detect a shared global common component and screen participating groups on a stationary segment.
 License: MIT + file LICENSE
