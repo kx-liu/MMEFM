@@ -292,6 +292,16 @@ checks.
 If validation reveals an unrelated pre-existing issue, report it separately
 rather than expanding the current task automatically.
 
+## Git workflow
+
+All Codex development tasks use `main` unless the researcher explicitly specifies another branch. Before starting, verify the working tree, switch to `main`, and update from `origin/main` with a fast-forward-only pull. Do not create task commits on unrelated feature branches.
+
+After appropriate local validation, stage only task-related files and automatically commit successful changes with a concise, descriptive English message. Push explicitly with `git push origin main:main`; never use `git push origin HEAD` as the default. Verify that remote `main` contains the new commit before reporting success.
+
+Never force-push, reset unrelated history, or automatically merge unrelated branches. If switching, updating, committing, or pushing is unsafe, stop and report the problem.
+
+During the current package-development stage, GitHub Actions checks are manually triggered rather than run on every push. Continue focused local validation after each task. Do not restore automatic CI triggers until the researcher explicitly requests the final validation stage.
+
 ## Agent output
 
 Keep implementation reports concise.
