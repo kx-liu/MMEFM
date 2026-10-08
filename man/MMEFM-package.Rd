@@ -6,7 +6,7 @@
 \alias{MMEFM-package}
 \title{Multilevel Main Effects Matrix Factor Model Tools}
 \description{
-Intended tools for estimation, rank selection, global common-factor detection, and simulation for the Multilevel Main Effects Matrix Factor Model. Statistical methods are not yet implemented in this development version.
+Estimation and rank selection for the Multilevel Main Effects Matrix Factor Model, including global and local main effects and common matrix-factor components.
 }
 \seealso{
 Useful links:

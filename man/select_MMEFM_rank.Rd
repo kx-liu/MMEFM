@@ -29,7 +29,9 @@ select_MMEFM_rank(
 \value{
 An object of class \code{mmefm_rank} with scalar integer global ranks \code{r1}, \code{l1}, \code{kr}, and \code{kc}, and group-indexed integer vectors \code{r2}, \code{l2}, \code{kr_m}, and \code{kc_m}. Here \code{r1}/\code{r2} describe global/local row main effects, \code{l1}/\code{l2} global/local column main effects, and \code{kr}/\code{kr_m} and \code{kc}/\code{kc_m} global/local row and column common components. Group vectors retain the names and order of \code{Xt}.
 
-The additional \code{diagnostics} field contains entries with the same eight rank names: spectra, pooled spectra, ratios, and selected ranks for global fits, and group lists of these quantities for local fits. Eigenvectors and loading matrices are omitted. Its \code{projection} entry contains \code{iterations}, \code{converged}, and the two-column integer \code{rank_path} with columns \code{kr} and \code{kc}.
+The additional \code{diagnostics} field has exactly the same eight rank names. Global entries contain \code{eigenvalues} (group spectra), \code{pooled_eigenvalues} (indexwise spectral maxima), and \code{ratios}. Local entries are group lists containing only ordinary \code{eigenvalues} and \code{ratios} vectors. Selected ranks, eigenvectors, and iteration traces are omitted.
+
+Global and local rank pairs must together fit each group's corresponding row or column dimension; equality is allowed. Infeasible automatic selections error without capping or modifying ranks.
 }
 \description{
 Estimates the eight main-effect and common-component loading ranks using the manuscript's unperturbed consecutive eigenvalue-ratio rule.
@@ -37,7 +39,7 @@ Estimates the eight main-effect and common-component loading ranks using the man
 \details{
 Global ranks use consecutive ratios of the indexwise maxima of group eigenvalue spectra, over the shared eigenvalue index range. Local ranks use the consecutive ratios of each group's own spectrum. All available consecutive ratios are considered, with a zero denominator assigned an infinite ratio. Ties select the first minimizing index. Ranks are positive in this version.
 
-Global common ranks \code{kr} and \code{kc} are re-estimated within Algorithm 1. Convergence requires unchanged ranks and a total loading-space discrepancy below \code{tol}; the final iterate is returned if \code{max_iter} is reached.
+Global common ranks \code{kr} and \code{kc} are re-estimated within Algorithm 1. Convergence requires unchanged ranks and a total loading-space discrepancy below \code{tol}; the final iterate is returned with a warning if \code{max_iter} is reached without convergence.
 
 Rank matrices are symmetrized before eigendecomposition. Only floating-point-scale negative eigenvalues are set to zero; materially indefinite matrices produce an error.
 }

@@ -45,9 +45,9 @@ test_that("Xt requires finite entries and unambiguous group names", {
 
 test_that("complete ranks are canonical integers in Xt group order", {
   data_info <- .validate_Xt(list(a = array(0, c(1, 3, 5)), b = array(0, c(1, 5, 4))))
-  rank <- list(r1 = 1, l1 = 3, r2 = c(2, 4), l2 = c(4, 3),
+  rank <- list(r1 = 1, l1 = 2, r2 = c(2, 4), l2 = c(3, 2),
                kr = 2, kc = 1, kr_m = c(1, 3), kc_m = c(2, 1))
-  expected <- list(r1 = 1L, l1 = 3L, r2 = c(a = 2L, b = 4L), l2 = c(a = 4L, b = 3L),
+  expected <- list(r1 = 1L, l1 = 2L, r2 = c(a = 2L, b = 4L), l2 = c(a = 3L, b = 2L),
                    kr = 2L, kc = 1L, kr_m = c(a = 1L, b = 3L), kc_m = c(a = 2L, b = 1L))
   expect_identical(.validate_rank(rank, data_info), expected)
   for (component in c("r2", "l2", "kr_m", "kc_m")) names(rank[[component]]) <- c("a", "b")
@@ -202,4 +202,18 @@ test_that("a rank object's class does not bypass structural or value validation"
   invalid <- object
   invalid$other <- 1L
   expect_error(.validate_rank(invalid, data_info), "complete named list")
+})
+
+
+test_that("combined global/local ranks allow equality but reject incompatible pairs", {
+  data_info <- .validate_Xt(list(a = array(0, c(2L, 4L, 4L)), b = array(0, c(2L, 5L, 5L))))
+  ranks <- list(r1 = 2L, l1 = 2L, r2 = c(2L, 3L), l2 = c(2L, 3L),
+                kr = 2L, kc = 2L, kr_m = c(2L, 3L), kc_m = c(2L, 3L))
+  canonical <- .validate_rank(ranks, data_info)
+  expect_identical(canonical$r2, c(a = 2L, b = 3L))
+  for (pair in list(c("r1", "r2"), c("l1", "l2"), c("kr", "kr_m"), c("kc", "kc_m"))) {
+    invalid <- ranks
+    invalid[[pair[2L]]][1L] <- 3L
+    expect_error(.validate_rank(invalid, data_info), paste0(pair[1L], " .*", pair[2L], ".*", if (pair[1L] %in% c("r1", "kr")) "row" else "column", ".*a"))
+  }
 })

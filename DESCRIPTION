@@ -3,7 +3,7 @@ Type: Package
 Title: Multilevel Main Effects Matrix Factor Model Tools
 Version: 0.0.0.9000
 Authors@R: person(given = "Kaixin", family = "Liu", email = "k.liu31@lse.ac.uk", role = c("aut", "cre"))
-Description: Tools for estimation, rank selection, global common-factor detection, and simulation for the Multilevel Main Effects Matrix Factor Model. This development version contains the package infrastructure; statistical methods are not yet implemented.
+Description: Estimation and rank selection for the Multilevel Main Effects Matrix Factor Model, including global and local main effects and common matrix-factor components.
 License: MIT + file LICENSE
 URL: https://github.com/kx-liu/MMEFM
 BugReports: https://github.com/kx-liu/MMEFM/issues

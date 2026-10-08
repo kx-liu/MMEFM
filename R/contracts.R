@@ -77,6 +77,17 @@
     if (!global) names(values) <- data_info$group_names
     ranks[[component]] <- values
   }
+  for (pair in list(c("r1", "r2"), c("l1", "l2"), c("kr", "kr_m"), c("kc", "kc_m"))) {
+    row_side <- pair[1L] %in% c("r1", "kr")
+    dimensions <- if (row_side) data_info$p else data_info$q
+    total <- as.numeric(ranks[[pair[1L]]]) + ranks[[pair[2L]]]
+    invalid <- which(total > dimensions)
+    if (length(invalid)) {
+      groups <- if (is.null(data_info$group_names)) invalid else data_info$group_names[invalid]
+      stop(sprintf("rank$%s + rank$%s must not exceed the %s dimension in group(s): %s.",
+                   pair[1L], pair[2L], if (row_side) "row" else "column", paste(groups, collapse = ", ")))
+    }
+  }
   ranks
 }
 

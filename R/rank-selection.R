@@ -43,13 +43,15 @@
 #'
 #' @details Global ranks use consecutive ratios of the indexwise maxima of group eigenvalue spectra, over the shared eigenvalue index range. Local ranks use the consecutive ratios of each group's own spectrum. All available consecutive ratios are considered, with a zero denominator assigned an infinite ratio. Ties select the first minimizing index. Ranks are positive in this version.
 #'
-#' Global common ranks `kr` and `kc` are re-estimated within Algorithm 1. Convergence requires unchanged ranks and a total loading-space discrepancy below `tol`; the final iterate is returned if `max_iter` is reached.
+#' Global common ranks `kr` and `kc` are re-estimated within Algorithm 1. Convergence requires unchanged ranks and a total loading-space discrepancy below `tol`; the final iterate is returned with a warning if `max_iter` is reached without convergence.
 #'
 #' Rank matrices are symmetrized before eigendecomposition. Only floating-point-scale negative eigenvalues are set to zero; materially indefinite matrices produce an error.
 #'
 #' @return An object of class `mmefm_rank` with scalar integer global ranks `r1`, `l1`, `kr`, and `kc`, and group-indexed integer vectors `r2`, `l2`, `kr_m`, and `kc_m`. Here `r1`/`r2` describe global/local row main effects, `l1`/`l2` global/local column main effects, and `kr`/`kr_m` and `kc`/`kc_m` global/local row and column common components. Group vectors retain the names and order of `Xt`.
 #'
-#' The additional `diagnostics` field contains entries with the same eight rank names: spectra, pooled spectra, ratios, and selected ranks for global fits, and group lists of these quantities for local fits. Eigenvectors and loading matrices are omitted. Its `projection` entry contains `iterations`, `converged`, and the two-column integer `rank_path` with columns `kr` and `kc`.
+#' The additional `diagnostics` field has exactly the same eight rank names. Global entries contain `eigenvalues` (group spectra), `pooled_eigenvalues` (indexwise spectral maxima), and `ratios`. Local entries are group lists containing only ordinary `eigenvalues` and `ratios` vectors. Selected ranks, eigenvectors, and iteration traces are omitted.
+#'
+#' Global and local rank pairs must together fit each group's corresponding row or column dimension; equality is allowed. Infeasible automatic selections error without capping or modifying ranks.
 #' @export
 select_MMEFM_rank <- function(Xt, K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2026L, verbose = FALSE) {
   data_info <- .validate_Xt(Xt)
@@ -82,17 +84,9 @@ select_MMEFM_rank <- function(Xt, K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2
     l2_fit[[m]] <- .paper_eigen_ratio(local_psd$column[[m]])
   }
 
-  had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-  if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-  on.exit({
-    if (had_seed) {
-      assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
-      rm(".Random.seed", envir = .GlobalEnv)
-    }
-  }, add = TRUE)
-  set.seed(seed)
-  common <- .initial_common_loadings(moments$check_Y, K0 = K0, max_iter = max_iter, tol = tol, verbose = verbose)
+  common <- .with_preserved_seed(seed,
+    .initial_common_loadings(moments$check_Y, K0 = K0, max_iter = max_iter, tol = tol, verbose = verbose))
+  if (!common$converged) warning("Rank-selection projection reached max_iter without convergence.", call. = FALSE)
   for (m in seq_len(data_info$M)) {
     local_common <- .local_common_psd(moments$check_Y[[m]], common$Q_hat[[m]], common$J_hat[[m]])
     kr_m_fit[[m]] <- .paper_eigen_ratio(local_common$row)
@@ -107,10 +101,14 @@ select_MMEFM_rank <- function(Xt, K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2
   ranks <- .validate_rank(ranks, data_info)
   diagnostics <- list(r1 = r1_fit, l1 = l1_fit, r2 = r2_fit, l2 = l2_fit,
                       kr = common$row_rank_fit, kc = common$column_rank_fit, kr_m = kr_m_fit, kc_m = kc_m_fit)
-  for (name in c("r1", "l1", "kr", "kc")) diagnostics[[name]]$eigenvectors <- NULL
-  for (name in c("r2", "l2", "kr_m", "kc_m")) {
-    for (m in seq_len(data_info$M)) diagnostics[[name]][[m]]$eigenvectors <- NULL
+  for (name in c("r1", "l1", "kr", "kc")) {
+    diagnostics[[name]] <- diagnostics[[name]][c("eigenvalues", "pooled_eigenvalues", "ratios")]
   }
-  diagnostics$projection <- list(iterations = common$iterations, converged = common$converged, rank_path = common$rank_path)
+  for (name in c("r2", "l2", "kr_m", "kc_m")) {
+    for (m in seq_len(data_info$M)) {
+      fit <- diagnostics[[name]][[m]]
+      diagnostics[[name]][[m]] <- list(eigenvalues = fit$eigenvalues[[1L]], ratios = fit$ratios)
+    }
+  }
   .new_mmefm_rank(ranks, diagnostics)
 }

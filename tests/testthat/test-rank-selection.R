@@ -1,8 +1,8 @@
 .rank_selection_fixture <- function() {
   set.seed(917L)
-  list(a = array(rnorm(12L * 3L * 4L), c(12L, 3L, 4L)),
-       b = array(rnorm(12L * 4L * 3L), c(12L, 4L, 3L)),
-       c = array(rnorm(12L * 5L * 5L), c(12L, 5L, 5L)))
+  list(a = array(rnorm(12L * 2L * 2L), c(12L, 2L, 2L)),
+       b = array(rnorm(12L * 2L * 2L), c(12L, 2L, 2L)),
+       c = array(rnorm(12L * 2L * 2L), c(12L, 2L, 2L)))
 }
 
 # Minimum dimensions leave the true elbow as the last available ratio; no numerical perturbation is needed.
@@ -78,14 +78,10 @@ test_that("automatic Algorithm 1 recovers exact ranks and preserves reproducibil
     second <- .initial_common_loadings(fixture$Y, K0 = 8L)
     expect_identical(first, second)
     expect_identical(c(first$kr, first$kc), ranks)
-    expect_identical(colnames(first$rank_path), c("kr", "kc"))
-    expect_type(first$rank_path, "integer")
-    expect_identical(dim(first$rank_path), c(first$iterations + 1L, 2L))
-    expect_equal(first$rank_path[nrow(first$rank_path), ], c(kr = first$kr, kc = first$kc))
     expect_true(first$converged)
-    expect_identical(first$rank_path[nrow(first$rank_path), ], first$rank_path[nrow(first$rank_path) - 1L, ])
     expect_identical(first$row_rank_fit$rank, first$kr)
     expect_identical(first$column_rank_fit$rank, first$kc)
+    expect_identical(names(first), c("Q_hat", "J_hat", "iterations", "converged", "kr", "kc", "row_rank_fit", "column_rank_fit"))
     for (m in seq_along(fixture$Y)) {
       expect_identical(dim(first$Q_hat[[m]]), c(nrow(fixture$Q[[m]]), ranks[1L]))
       expect_identical(dim(first$J_hat[[m]]), c(nrow(fixture$J[[m]]), ranks[2L]))
@@ -109,8 +105,8 @@ test_that("a rank change prevents projection convergence even with a large space
             c = array(rnorm(8L * 6L * 6L), c(8L, 6L, 6L)))
   set.seed(2026L)
   fit <- .initial_common_loadings(Y, K0 = 4L, max_iter = 1L, tol = 1e9)
-  expect_true(any(fit$rank_path[1L, ] != fit$rank_path[2L, ]))
   expect_false(fit$converged)
+  expect_identical(c(fit$kr, fit$kc), c(1L, 1L))
   expect_identical(fit$iterations, 1L)
 })
 
@@ -131,24 +127,21 @@ test_that("public rank objects and diagnostics match the canonical contracts", {
     expect_identical(names(result[[field]]), names(Xt))
   }
   diagnostics <- result$diagnostics
-  expect_identical(names(diagnostics), c(components, "projection"))
-  fit_names <- c("rank", "eigenvalues", "pooled_eigenvalues", "ratios")
+  expect_identical(names(diagnostics), components)
+  fit_names <- c("eigenvalues", "pooled_eigenvalues", "ratios")
   for (field in c("r1", "l1", "kr", "kc")) {
     expect_identical(names(diagnostics[[field]]), fit_names)
     expect_identical(names(diagnostics[[field]]$eigenvalues), names(Xt))
-    expect_identical(diagnostics[[field]]$rank, result[[field]])
+    expect_identical(as.integer(which.min(diagnostics[[field]]$ratios)), result[[field]])
   }
   for (field in c("r2", "l2", "kr_m", "kc_m")) {
     expect_identical(names(diagnostics[[field]]), names(Xt))
     for (m in seq_along(Xt)) {
-      expect_identical(names(diagnostics[[field]][[m]]), fit_names)
-      expect_identical(diagnostics[[field]][[m]]$rank, unname(result[[field]][m]))
-      expect_length(diagnostics[[field]][[m]]$ratios, length(diagnostics[[field]][[m]]$pooled_eigenvalues) - 1L)
+      expect_identical(names(diagnostics[[field]][[m]]), c("eigenvalues", "ratios"))
+      expect_identical(as.integer(which.min(diagnostics[[field]][[m]]$ratios)), unname(result[[field]][m]))
+      expect_length(diagnostics[[field]][[m]]$ratios, length(diagnostics[[field]][[m]]$eigenvalues) - 1L)
     }
   }
-  expect_identical(names(diagnostics$projection), c("iterations", "converged", "rank_path"))
-  expect_type(diagnostics$projection$rank_path, "integer")
-  expect_identical(colnames(diagnostics$projection$rank_path), c("kr", "kc"))
   expect_null(result$source)
   unnamed <- select_MMEFM_rank(unname(Xt), K0 = 8L)
   for (field in c("r2", "l2", "kr_m", "kc_m")) expect_null(names(unnamed[[field]]))

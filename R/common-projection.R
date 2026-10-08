@@ -104,7 +104,6 @@
     column_rank_fit <- .paper_eigen_ratio(column_psd)
     kc <- column_rank_fit$rank
     J_hat <- lapply(column_rank_fit$eigenvectors, function(V) V[, seq_len(kc), drop = FALSE])
-    rank_path <- matrix(c(kr, kc), nrow = 1L, dimnames = list(NULL, c("kr", "kc")))
   } else {
     J_hat <- lapply(column_psd, .leading_eigenvectors, k = kc)
   }
@@ -139,7 +138,6 @@
       row_rank_fit <- .paper_eigen_ratio(row_psd)
       kr <- row_rank_fit$rank
       Q_hat <- lapply(row_rank_fit$eigenvectors, function(V) V[, seq_len(kr), drop = FALSE])
-      rank_path <- rbind(rank_path, c(kr, kc))
     } else {
       Q_hat <- lapply(row_psd, .leading_eigenvectors, k = kr)
     }
@@ -158,7 +156,6 @@
   if (automatic_rank) {
     result$kr <- kr
     result$kc <- kc
-    result$rank_path <- rank_path
     result$row_rank_fit <- row_rank_fit
     result$column_rank_fit <- column_rank_fit
   }
