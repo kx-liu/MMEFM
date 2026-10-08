@@ -31,57 +31,70 @@ gen_MMEFM(
 \arguments{
 \item{T}{Positive whole-number time dimension within R's integer range.}
 
-\item{p, q}{Whole-number row and column dimension vectors, each at least two, with the same length M >= 2. Both must be unnamed or have unique nonempty matching group names; q is reordered to p order.}
+\item{p, q}{Whole-number row and column dimension vectors of equal length M >= 2, with entries at least two. Both are unnamed or have unique nonempty matching group names; q is matched to p order.}
 
-\item{rank}{Complete canonical eight-field rank list or \code{mmefm_rank}; see \code{\link[=est_MMEFM]{est_MMEFM()}}. Positive nominal model ranks apply. All model loadings are centered under IC1, so \code{r1 + r2[m]} and \code{kr + kr_m[m]} must be at most \code{p_m - 1}, and \code{l1 + l2[m]} and \code{kc + kc_m[m]} at most \code{q_m - 1}; equality at these centered dimensions is allowed. Supplied diagnostics are discarded. Each global/local main-score rank sum must also be at most T; equality is allowed.}
+\item{rank}{Complete eight-field rank list or \code{mmefm_rank}; see \code{\link[=est_MMEFM]{est_MMEFM()}}. Nominal model ranks are positive. IC1 centering requires \code{r1 + r2[m]} and \code{kr + kr_m[m]} to be at most \code{p_m - 1}, and \code{l1 + l2[m]} and \code{kc + kc_m[m]} at most \code{q_m - 1}. Equality is allowed. The generator additionally requires each global/local main-score rank sum to be at most T to construct temporal orthogonality. Supplied rank diagnostics are discarded.}
 
-\item{main_strength_global}{Length-two row/column main-loading strengths in (0.5, 1].}
+\item{main_strength_global}{Length-two vector of global row and column main-loading strengths in \verb{(0.5, 1]}. A value of 1 gives strong loadings; smaller values give weaker loadings.}
 
-\item{main_strength_local}{NULL to repeat global strengths, or a group list of length-two strengths.}
+\item{main_strength_local}{NULL to repeat global main strengths, or a group list of length-two row/column strengths in \verb{(0.5, 1]}.}
 
-\item{common_strength_global, common_strength_local}{NULL for unit strengths, or exactly \code{list(row = ..., column = ...)}, each a group list. Entries are scalar or one strength per corresponding loading column, in (0.5, 1]. Named group lists are matched to p order; unnamed lists are positional.}
+\item{common_strength_global, common_strength_local}{NULL for unit strengths, or exactly \code{list(row = ..., column = ...)}, with each entry a group list. Each group entry is a scalar or one strength per loading column, in \verb{(0.5, 1]}. Named group lists are matched to p order; unnamed lists are positional.}
 
-\item{memory}{NULL for two zero-memory segments for all latent components, or exactly a list with \code{mu_global}, \code{mu_local}, \code{alpha}, \code{beta}, \code{G}, \code{F}. A basic spec is a numeric vector of finite d < 0.5 or \code{list(d = ..., seg_lens = ...)} with positive whole segment lengths summing to T. Numeric specs split T equally with remainder in the final segment. Means and G use basic specs. F uses a basic spec or group list of basic specs. Alpha/beta use a basic spec or \verb{list(global = <basic>, local = <basic or group list>)}. Local mean innovations share one spec because group demeaning mixes them.}
+\item{memory}{NULL for two zero-memory segments for all latent components, or exactly a list with \code{mu_global}, \code{mu_local}, \code{alpha}, \code{beta}, \code{G}, and \code{F}. A basic specification is a numeric vector of finite d < 0.5, or \code{list(d = ..., seg_lens = ...)} with positive whole segment lengths summing to T. Numeric specifications split T equally, with the remainder in the last segment. Means and G use basic specifications. F uses a basic specification or a group list of them. Alpha/beta use a basic specification or \verb{list(global = <basic>, local = <basic or group list>)}. Local mean innovations share one specification because group demeaning mixes them. No lower bound on d is imposed.}
 
-\item{phi, error_phi}{Nonempty finite numeric AR coefficient vectors for latent and error series respectively. A scalar specifies AR(1) with absolute value below one. For AR(p), every root of \code{1 - phi[1]*z - ... - phi[p]*z^p} (and analogously for error_phi) must lie strictly outside the unit circle; individual coefficients need not have absolute value below one.}
+\item{phi, error_phi}{Stable AR coefficient vectors for latent and error processes, respectively, in lag order. A scalar specifies AR(1) with absolute value below one. For AR(p), the roots of \code{1 - phi[1]*z - ... - phi[p]*z^p} (and the analogous error polynomial) must lie strictly outside the unit circle. Individual coefficients may exceed one in magnitude.}
 
-\item{error_rank_global}{Length-two nonnegative whole row/column nuisance ranks fitting all groups.}
+\item{error_rank_global}{Length-two nonnegative whole row/column ranks for the shared error factor process, fitting every group's dimensions.}
 
-\item{error_rank_local}{NULL for c(2, 2) in every group, or a group list of nonnegative whole row/column nuisance ranks fitting each group. Zero nuisance ranks produce zero components.}
+\item{error_rank_local}{NULL for \code{c(2, 2)} in every group, or a group list of nonnegative whole row/column error ranks fitting each group's dimensions. Zero ranks give zero error factor components.}
 
-\item{error_loading_zero_prob}{Probability in [0, 1) of independently zeroing each Gaussian error-loading entry.}
+\item{error_loading_zero_prob}{Probability in \verb{[0, 1)} of setting each Gaussian error-loading entry to zero independently.}
 
-\item{innovation}{Gaussian (default) or raw Student-t temporal innovations. Loadings and error scale entries always use Gaussian draws.}
+\item{innovation}{Gaussian (default) or raw Student-t temporal innovations. Spatial loadings and error-scale entries always use Gaussian draws.}
 
-\item{df}{Finite positive Student-t degrees of freedom, retained in metadata even for Gaussian. Raw Student-t draws are not variance-standardized; theoretical fourth-moment conditions require an appropriate df, but simulation permits any positive df.}
+\item{df}{Finite positive Student-t degrees of freedom. Raw draws are not variance-standardized. Simulation accepts any positive df, which need not meet the manuscript's moment assumptions. The value is retained in metadata for either innovation family.}
 
-\item{burn}{Nonnegative whole-number burn-in within integer range.}
+\item{burn}{Nonnegative whole-number burn-in within R's integer range.}
 
-\item{filter_length}{NULL for \code{min(2000, max(200, 5*T))}, or a nonnegative whole fractional/AR impulse-response filter truncation length. Zero-memory series use direct AR recursion; other series use truncated AR convolution followed by segment-specific fractional filters. Scalar AR(1) retains its established recursion and geometric filter.}
+\item{filter_length}{NULL for \code{min(2000, max(200, 5*T))}, or a nonnegative whole fractional/AR impulse-response truncation length within R's integer range. See \code{\link[=gen_piecewise_arfima]{gen_piecewise_arfima()}} for filtering and warmup conventions.}
 
-\item{active_global}{NULL for all groups, a nonmissing logical length-M vector, or unique whole group indices (empty indices allowed). Zero or at least two active groups are permitted; a singleton errors. Ownership is applied after ordinary global draws by zeroing inactive Q/J. Nominal positive ranks and G remain unchanged.}
+\item{active_global}{NULL for all groups, a nonmissing logical length-M vector in group order, or unique whole group indices, including empty indices. Zero or at least two active groups are allowed; a singleton errors. Inactive global common loadings Q/J are zeroed after their ordinary draws. Nominal positive ranks and G are unchanged.}
 
-\item{seed}{Nonnegative whole-number seed within integer range. Caller RNG state is preserved on success and error; RNG kind is unchanged.}
+\item{seed}{Nonnegative whole-number seed within R's integer range. The caller's RNG state is preserved on success and error; RNG kind is unchanged.}
 
-\item{store_components}{One nonmissing logical. FALSE avoids storing seven additional full-array component lists; truth loadings and factor series are always returned.}
+\item{store_components}{One nonmissing logical. TRUE stores seven full-array signal/error component lists in addition to truth loadings and factors. FALSE, the default, omits these arrays.}
 }
 \value{
-An ordinary list with exactly \code{Xt}, \code{dimensions}, \code{rank}, \code{main_effect}, \code{common_component}, \code{error}, \code{memory}, \code{innovation}, and \code{components}. Dimensions contain M, T, p, q and optional group names. Rank is an \code{mmefm_rank} with NULL diagnostics. Main truth contains \code{direct} c/a/b, \code{global} mu/A1/alpha/B1/beta, and \code{local} mu/A2/alpha/B2/beta. Common truth contains global Q/J/G/active and local R/C/F. Error truth contains global Q/J/G, local R/C/F, and group \code{sigma} matrices. Scores and means are time-by-direction matrices; cores are time-by-row-rank-by-column-rank arrays. All group lists preserve optional names.
+A list with \code{Xt}, \code{dimensions}, \code{rank}, \code{main_effect}, \code{common_component}, \code{error}, \code{memory}, \code{innovation}, and \code{components}.
 
-Memory contains canonical d/seg_lens specs, with alpha/beta split into global and group-local specs and F expanded by group. Innovation contains exactly family and df. Components is NULL or exactly seven group-array lists: global_main, local_main, global_common, local_common, error_global, error_local, error_idiosyncratic; their sum recovers Xt.
+\code{Xt} contains \verb{T x p_m x q_m} arrays. \code{dimensions} contains M, T, p, q, and optional group names. \code{rank} is an \code{mmefm_rank} with NULL diagnostics.
+
+\code{main_effect} contains direct truth \code{c}, \code{a}, \code{b}, global truth \code{mu}, \code{A1}, \code{alpha}, \code{B1}, \code{beta}, and local truth \code{mu}, \code{A2}, \code{alpha}, \code{B2}, \code{beta}. \code{common_component} contains global \code{Q}, \code{J}, \code{G}, \code{active}, and local \code{R}, \code{C}, \code{F}. \code{error} contains global and local \code{Q}/\code{J}/\code{G} or \code{R}/\code{C}/\code{F} quantities and group \code{sigma} matrices. Scores and means are time-by-direction matrices; cores are time-by-row-rank-by-column-rank arrays. Group lists preserve optional names.
+
+\code{memory} contains canonical d/segment-length specifications, with alpha/beta split into global and group-local specifications and F expanded by group. \code{innovation} contains \code{family} and \code{df}. If stored, \code{components} contains \code{global_main}, \code{local_main}, \code{global_common}, \code{local_common}, \code{error_global}, \code{error_local}, and \code{error_idiosyncratic}. Their sum recovers \code{Xt}; otherwise \code{components} is NULL.
 }
 \description{
-Generate canonical group arrays and nested statistical truth using the manuscript's finite-sample numerical DGP.
+Generate grouped matrix-valued time series with global and local grand means, row and column main effects, common matrix-factor interactions, and error. Return the data and generating quantities for comparison with fitted components.
 }
 \details{
-Loading column entries are independent Gaussian draws scaled by n^(-(1-xi)/2), then demeaned for IC1. Spatial global/local loadings are not artificially orthogonalized. Local grand means sum to zero across groups at each time. Local alpha/beta score matrices are projected with ordinary solve onto the complement of the global temporal score span, enforcing exact sample IC2 orthogonality to roundoff; singular Grams error without ridge or fallback.
+The model separates shared temporal variation from group-local variation, and additive main effects from row-column interactions. \code{\link[=est_MMEFM]{est_MMEFM()}} fits the same component structure. Generating loadings and fitted loadings need not agree entrywise because factor coordinates are not unique.
 
-Error loadings are independent sparse Gaussian matrices across groups. The numerical DGP deliberately relaxes E1 cross-group error-loading orthogonality, corresponding to the manuscript's relaxed specification. Error AR processes are not rescaled to unit variance, and Sigma_epsilon entries are raw absolute Gaussian draws. This finite-sample simulator does not literally enforce every asymptotic E1/E2 regularity condition.
+A loading column in spatial dimension n with strength \eqn{\xi} is generated from Gaussian entries scaled by \eqn{n^{-(1-\xi)/2}} and then centered under IC1. Its squared norm is of order \eqn{n^\xi}. Global and local spatial loadings are not artificially orthogonalized. Local grand means sum to zero across groups at each time. Local row and column main-score series are projected off the corresponding global temporal span, enforcing sample IC2 orthogonality up to roundoff. Singular Gram systems error without ridge or fallback.
+
+Memory specifications apply segment-specific fractional filters to stable AR processes. Zero memory gives direct AR recursion. See \code{\link[=gen_piecewise_arfima]{gen_piecewise_arfima()}} for the retained-sample warmup and truncation conventions. Piecewise memory can change temporal dependence; it does not imply whole-sample stationarity.
+
+The error contains shared and local factor processes plus cell-specific error. Error loadings are independent sparse Gaussian matrices across groups. This finite-sample construction deliberately relaxes the manuscript's E1 cross-group error-loading orthogonality. Error AR processes are not rescaled to unit variance, and cell-specific scale entries are absolute Gaussian draws. Generated data do not automatically satisfy every asymptotic E1/E2 regularity condition. Nonfinite observations error without repair.
 }
 \examples{
-rank <- list(r1 = 1, l1 = 1, r2 = c(1, 1), l2 = c(1, 1),
-             kr = 1, kc = 1, kr_m = c(1, 1), kc_m = c(1, 1))
-simulation <- gen_MMEFM(8, c(4, 5), c(5, 4), rank,
-                        burn = 4, filter_length = 8, store_components = FALSE)
-dim(simulation$Xt[[1]])
+rank <- list(r1 = 1L, l1 = 1L, r2 = c(1L, 1L), l2 = c(1L, 1L),
+             kr = 1L, kc = 1L, kr_m = c(1L, 1L), kc_m = c(1L, 1L))
+simulation <- gen_MMEFM(T = 8L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L), rank = rank,
+                        burn = 4L, filter_length = 8L, seed = 2026L, store_components = TRUE)
+lapply(simulation$Xt, dim)
+reconstructed <- Reduce(`+`, lapply(simulation$components, function(x) x[[1L]]))
+max(abs(reconstructed - simulation$Xt[[1L]]))
+}
+\seealso{
+\code{\link[=gen_piecewise_arfima]{gen_piecewise_arfima()}}, \code{\link[=est_MMEFM]{est_MMEFM()}}, \code{\link[=select_MMEFM_rank]{select_MMEFM_rank()}}, \code{\link[=detect_MMEFM_global]{detect_MMEFM_global()}}
 }

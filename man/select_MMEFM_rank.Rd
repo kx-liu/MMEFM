@@ -2,7 +2,7 @@
 % Please edit documentation in R/rank-selection.R
 \name{select_MMEFM_rank}
 \alias{select_MMEFM_rank}
-\title{Select ranks for the Multilevel Main Effects Matrix Factor Model}
+\title{Select global and local MMEFM ranks}
 \usage{
 select_MMEFM_rank(
   Xt,
@@ -14,32 +14,59 @@ select_MMEFM_rank(
 )
 }
 \arguments{
-\item{Xt}{A list of at least two finite numeric arrays with dimensions \verb{T x p_m x q_m}. All groups share \code{T >= 1}; row and column dimensions may differ between groups and must each be at least two. Group names are optional but must be nonempty and unique when supplied.}
+\item{Xt}{A list of at least two finite numeric arrays with dimensions \verb{T x p_m x q_m}, in time, row, and column order. All groups share \code{T >= 1}; each spatial dimension is at least two. Group names are optional, but must be nonempty and unique when supplied.}
 
-\item{K0}{Positive whole number of random half-panel column directions per group used to initialize Algorithm 1. Defaults to 20.}
+\item{K0}{Positive whole number of random half-panel column directions per group for initializing the iterative projection procedure (Algorithm 1).}
 
-\item{max_iter}{Positive whole number limiting Algorithm 1 update iterations. Defaults to 20.}
+\item{max_iter}{Positive whole-number limit on Algorithm 1 update iterations.}
 
-\item{tol}{Finite positive tolerance for the total loading-space discrepancy in Algorithm 1.}
+\item{tol}{Finite positive tolerance for the sum of loading-space discrepancies in Algorithm 1.}
 
-\item{seed}{Nonnegative whole number within R's integer range controlling Algorithm 1's random directions. The same seed gives reproducible results under the same RNG kind; the caller's prior RNG state is restored on return or error.}
+\item{seed}{Nonnegative whole number within R's integer range controlling random projection directions. Results are reproducible under the same seed and RNG kind. The caller's RNG state is restored on return or error.}
 
-\item{verbose}{One nonmissing logical indicating whether to report Algorithm 1 progress.}
+\item{verbose}{One nonmissing logical indicating whether to print Algorithm 1 progress.}
 }
 \value{
-An object of class \code{mmefm_rank} with scalar integer global ranks \code{r1}, \code{l1}, \code{kr}, and \code{kc}, and group-indexed integer vectors \code{r2}, \code{l2}, \code{kr_m}, and \code{kc_m}. Here \code{r1}/\code{r2} describe global/local row main effects, \code{l1}/\code{l2} global/local column main effects, and \code{kr}/\code{kr_m} and \code{kc}/\code{kc_m} global/local row and column common components. Group vectors retain the names and order of \code{Xt}.
+An \code{mmefm_rank} object containing the eight ranks and \code{diagnostics}. Global ranks \code{r1}, \code{l1}, \code{kr}, and \code{kc} are scalar integers. Local ranks \code{r2}, \code{l2}, \code{kr_m}, and \code{kc_m} are integer vectors retaining group names and order.
 
-The additional \code{diagnostics} field has exactly the same eight rank names. Global entries contain \code{eigenvalues} (group spectra), \code{pooled_eigenvalues} (indexwise spectral maxima), and \code{ratios}. Local entries are group lists containing only ordinary \code{eigenvalues} and \code{ratios} vectors. Selected ranks, eigenvectors, and iteration traces are omitted.
-
-Under IC1, global/local row rank sums \code{r1 + r2[m]} and \code{kr + kr_m[m]} must be at most \code{p_m - 1}; column sums \code{l1 + l2[m]} and \code{kc + kc_m[m]} must be at most \code{q_m - 1}. Equality at these centered-subspace dimensions is allowed. Infeasible automatic selections error without capping or modifying ranks.
+\code{diagnostics} has the same eight names. Global entries contain group \code{eigenvalues}, indexwise \code{pooled_eigenvalues}, and \code{ratios}. Local entries are group lists containing \code{eigenvalues} and \code{ratios}. Eigenvectors and iteration traces are not returned. The rank object can be supplied directly to \code{\link[=est_MMEFM]{est_MMEFM()}}.
 }
 \description{
-Estimates the eight main-effect and common-component loading ranks using the manuscript's unperturbed consecutive eigenvalue-ratio rule.
+Estimate the loading ranks for global and local row main effects, column main effects, and common components. Selection uses the manuscript's unperturbed consecutive eigenvalue-ratio rule.
 }
 \details{
-Global ranks use consecutive ratios of the indexwise maxima of group eigenvalue spectra, over the shared eigenvalue index range. Local ranks use the consecutive ratios of each group's own spectrum. All available consecutive ratios are considered, with a zero denominator assigned an infinite ratio. Ties select the first minimizing index. Ranks are positive in this version.
+The eight ranks correspond to global/local row main effects (\code{r1}, \code{r2}), column main effects (\code{l1}, \code{l2}), row common loadings (\code{kr}, \code{kr_m}), and column common loadings (\code{kc}, \code{kc_m}). Ranks are positive in this version.
 
-Global common ranks \code{kr} and \code{kc} are re-estimated within Algorithm 1. Convergence requires unchanged ranks and a total loading-space discrepancy below \code{tol}; the final iterate is returned with a warning if \code{max_iter} is reached without convergence.
+For a local rank, the selected index minimizes \eqn{\lambda_{j+1}/\lambda_j} for the group's relevant moment matrix. For a global rank, eigenvalues are first pooled by taking their maximum across groups separately at each index. Consecutive ratios of that pooled spectrum are then minimized. The search uses every available ratio: through the smallest group dimension minus one for global ranks, and the group's dimension minus one for local ranks. A zero denominator gives an infinite ratio; ties select the first minimizing index.
 
-Rank matrices are symmetrized before eigendecomposition. Only floating-point-scale negative eigenvalues are set to zero; materially indefinite matrices produce an error.
+Global main-effect ranks use cross-group moments. Local main-effect ranks use moments projected off the estimated global spaces. Global common ranks are updated within Algorithm 1; local common ranks use residual moments after projection off the global common spaces. Projection convergence requires unchanged global common ranks and a loading-space discrepancy below \code{tol}. If \code{max_iter} is reached, the final iterate is used with a warning.
+
+The ranks are selected independently and then checked jointly. Under IC1, \code{r1 + r2[m]} and \code{kr + kr_m[m]} must not exceed \code{p_m - 1}; \code{l1 + l2[m]} and \code{kc + kc_m[m]} must not exceed \code{q_m - 1}. Equality is allowed. Infeasible selections error without capping or modifying ranks. Small-sample selection is not guaranteed to recover the true ranks.
+
+Integer controls must be within R's integer range. Moment matrices are symmetrized before eigendecomposition. Roundoff-size negative eigenvalues are set to zero; materially indefinite matrices error. No eigenvalue perturbation is added.
+}
+\examples{
+# Exact additive and common signals with orthogonal temporal scores.
+H <- matrix(1, 1, 1)
+for (i in seq_len(4L)) {
+  H <- rbind(cbind(H, H), cbind(H, -H))
+}
+u <- c(1, 1, -2)
+v <- c(1, -1, 0)
+Xt <- setNames(vector('list', 3L), c('a','b','c'))
+for (m in seq_along(Xt)) {
+  Xt[[m]] <- array(0, c(16L, 3L, 3L))
+  for (t in seq_len(16L)) {
+    row <- 3 * (m + 1) * H[t, 2L] * u + H[t, 2L + m] * v
+    column <- 2 * (m + 2) * H[t, 6L] * u + H[t, 6L + m] * v
+    Xt[[m]][t, , ] <- outer(row, rep(1, 3)) + outer(rep(1, 3), column) +
+      5 * (m + 1) * (m + 2) * H[t, 10L] * outer(u, u) + H[t, 10L + m] * outer(v, v)
+  }
+}
+selected <- select_MMEFM_rank(Xt, K0 = 8L, max_iter = 50L, seed = 2026L)
+selected[c("r1", "l1", "kr", "kc")]
+selected$diagnostics$r1$ratios
+}
+\seealso{
+\code{\link[=est_MMEFM]{est_MMEFM()}}, \code{\link[=gen_MMEFM]{gen_MMEFM()}}
 }

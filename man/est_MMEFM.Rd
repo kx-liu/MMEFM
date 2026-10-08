@@ -22,48 +22,71 @@ est_MMEFM(
 )
 }
 \arguments{
-\item{Xt}{A list of at least two finite numeric arrays with dimensions \verb{T x p_m x q_m}. All groups share \code{T >= 1}; row and column dimensions may differ between groups and must each be at least two. Group names are optional but must be nonempty and unique when supplied.}
+\item{Xt}{A list of at least two finite numeric arrays with dimensions \verb{T x p_m x q_m}, in time, row, and column order. All groups share \code{T >= 1}; each spatial dimension is at least two. Group names are optional, but must be nonempty and unique when supplied.}
 
-\item{rank}{NULL for automatic rank selection, a complete named list with \code{r1}, \code{l1}, \code{r2}, \code{l2}, \code{kr}, \code{kc}, \code{kr_m}, and \code{kc_m}, or an \code{mmefm_rank} object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local ranks are reordered to named \code{Xt} groups. Each rank is smaller than its corresponding spatial dimension, and under IC1, \code{r1 + r2[m]} and \code{kr + kr_m[m]} must be at most \code{p_m - 1}, while \code{l1 + l2[m]} and \code{kc + kc_m[m]} must be at most \code{q_m - 1}. Equality at dimension minus one is allowed.}
+\item{rank}{NULL for automatic selection, a complete named list containing exactly \code{r1}, \code{l1}, \code{r2}, \code{l2}, \code{kr}, \code{kc}, \code{kr_m}, and \code{kc_m}, or an \code{mmefm_rank} object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local vectors are matched to named \code{Xt} groups. Each rank is smaller than its spatial dimension. Under IC1, row sums \code{r1 + r2[m]} and \code{kr + kr_m[m]} are at most \code{p_m - 1}; column sums \code{l1 + l2[m]} and \code{kc + kc_m[m]} are at most \code{q_m - 1}. Equality is allowed.}
 
-\item{K0}{Positive whole number of random half-panel column directions per group used to initialize Algorithm 1. Defaults to 20.}
+\item{K0}{Positive whole number of random half-panel column directions per group for initializing the iterative projection procedure (Algorithm 1).}
 
-\item{max_iter}{Positive whole number limiting Algorithm 1 update iterations. Defaults to 20.}
+\item{max_iter}{Positive whole-number limit on Algorithm 1 update iterations.}
 
-\item{tol}{Finite positive tolerance for the total loading-space discrepancy in Algorithm 1.}
+\item{tol}{Finite positive tolerance for the sum of loading-space discrepancies in Algorithm 1.}
 
-\item{alignment_method}{Global common-coordinate alignment: \code{"VanLoan"} (default) or \code{"Procrustes"}.}
+\item{alignment_method}{Method for aligning group-specific global common-factor coordinates: \code{"VanLoan"} (default) or \code{"Procrustes"}.}
 
-\item{max_iter_procrustes}{Positive whole-number integer-range limit for Procrustes alignment iterations.}
+\item{max_iter_procrustes}{Positive whole-number limit on Procrustes alignment iterations.}
 
-\item{tol_procrustes}{Finite positive relative-objective tolerance for Procrustes alignment.}
+\item{tol_procrustes}{Finite positive tolerance for relative change in the Procrustes alignment score.}
 
-\item{refit_method}{Global common-loading refit: \code{"VanLoan"} (default) or \code{"ALS"}. Alignment and refit choices are independent.}
+\item{refit_method}{Method for refitting global common loadings: \code{"VanLoan"} (default) or \code{"ALS"}. This choice is independent of \code{alignment_method}.}
 
-\item{max_iter_als}{Positive whole-number integer-range limit for ALS refit iterations.}
+\item{max_iter_als}{Positive whole-number limit on alternating least-squares (ALS) refitting iterations.}
 
-\item{tol_als}{Finite positive relative-residual-objective tolerance for ALS refitting.}
+\item{tol_als}{Finite positive tolerance for relative change in the squared-residual objective during ALS refitting.}
 
-\item{lambda}{Finite nonnegative ridge parameter for main-effect Gram systems only. The default zero implements the manuscript estimator without regularization.}
+\item{lambda}{Finite nonnegative ridge parameter for main-effect Gram systems only. Zero, the default, gives the unregularized manuscript estimator.}
 
-\item{seed}{Nonnegative whole number within R's integer range controlling Algorithm 1's random directions. The same seed gives reproducible results under the same RNG kind; the caller's prior RNG state is restored on return or error.}
+\item{seed}{Nonnegative whole number within R's integer range controlling random projection directions. Results are reproducible under the same seed and RNG kind. The caller's RNG state is restored on return or error.}
 
-\item{verbose}{One nonmissing logical indicating whether to report Algorithm 1 progress.}
+\item{verbose}{One nonmissing logical indicating whether to print Algorithm 1 progress.}
 }
 \value{
-An \code{mmefm_fit} list with exactly \code{call}, \code{dimensions}, \code{rank} (an \code{mmefm_rank}), \code{main_effect}, \code{common_component}, \code{check_Y}, and \code{convergence}. Observed arrays are not stored separately.
+An object of class \code{mmefm_fit} with \code{call}, \code{dimensions}, \code{rank}, \code{main_effect}, \code{common_component}, \code{check_Y}, and \code{convergence}. \code{rank} is an \code{mmefm_rank}; observed arrays are not stored separately.
 
-Main effects retain \code{direct}, \code{global}, and \code{local} estimates. Common components retain \code{global}, \code{local}, and method-specific \code{alignment} estimates. Global \code{Q_hat}/\code{J_hat} are the original Algorithm 1 loadings, while \code{Q_tilde}/\code{J_tilde} are final refitted loadings. \code{G_hat} is estimated after alignment; \code{G_tilde} equals \code{G_hat} for Van Loan refitting and is updated after every Q/J sweep for ALS. Local common estimates are \code{R_hat}, \code{C_hat}, and \code{F_hat}.
+\code{main_effect} contains \code{direct} estimates (\code{c_hat}, \code{a_hat}, \code{b_hat}), plus \code{global} and \code{local} grand means, loadings, and factor scores. Initial global loadings \code{A1_hat} and \code{B1_hat} are retained alongside refitted \code{A1_tilde} and \code{B1_tilde}. Local loadings are \code{A2_hat} and \code{B2_hat}; both levels store \code{alpha_hat} and \code{beta_hat}.
 
-\code{convergence} contains final-estimation \code{projection}, \code{procrustes}, and \code{als} iteration counts and logical indicators; inactive iterative methods use NULL. See \code{\link[=fitted.mmefm_fit]{fitted.mmefm_fit()}} for component reconstruction and \code{\link[=residuals.mmefm_fit]{residuals.mmefm_fit()}} for residuals.
+\code{common_component} contains \code{global}, \code{local}, and method-specific \code{alignment} estimates. Global \code{Q_hat} and \code{J_hat} are initial loading estimates; \code{Q_tilde} and \code{J_tilde} are refitted loadings. \code{G_hat} is the aligned, pooled core. \code{G_tilde} equals \code{G_hat} for Van Loan refitting and is updated during ALS. Local estimates are \code{R_hat}, \code{C_hat}, and \code{F_hat}.
+
+\code{check_Y} contains the direct additive residual arrays. \code{convergence} records iteration counts and convergence indicators for final \code{projection}, \code{procrustes}, and \code{als} stages; inactive methods are NULL. \code{\link[=summary.mmefm_fit]{summary.mmefm_fit()}} reports dimensions, ranks, and method choices, not convergence diagnostics.
 }
 \description{
-Fits global and local main effects and common matrix-factor components at complete positive ranks.
+Estimate global and local grand means, row and column main effects, and common matrix-factor components in grouped matrix-valued time series.
 }
 \details{
-Automatic selection is followed by a fresh known-rank fit with the same seed, so supplying the selected rank explicitly gives the same statistical estimates. Both public stochastic stages preserve the caller's RNG state, including on error.
+Direct moment estimators first recover the combined grand mean and centered row and column main effects in each group. Cross-group moments and projections separate global and local main-effect structures. Shared main-effect scores are estimated by pooling temporal information, and their global loadings are refitted.
 
-Global main-effect ranks must not exceed T. If either alignment or refitting uses Van Loan, \code{kr * kc <= T} is also necessary. These dimension checks do not guarantee nonsingular Gram systems: singular unregularized systems remain visible errors, with no numerical fallback or silent rank repair.
+The direct additive estimates are subtracted to form \code{check_Y}. Iterative projection estimates initial global common loading spaces from these residuals. Projections then recover local common loadings and factors. After removing local common components, group-specific global common-factor coordinates are aligned and pooled into one shared factor series. Global common loadings are refitted to that series.
 
-Iteration-limit non-convergence produces a warning for each affected active stage: rank-selection projection, final projection, Procrustes alignment, or ALS refitting. Final iterates are retained, with small operational convergence metadata available programmatically.
+Van Loan alignment approximates the between-group coordinate mapping by a Kronecker product. Van Loan refitting similarly approximates the unconstrained fitted loading product, with the aligned global core held fixed. Optional Procrustes alignment alternates orthogonal row and column transformations. Optional ALS refitting alternates row and column loading updates and updates the shared global core after each sweep.
+
+The direct main-effect estimates are not the final low-rank main-effect reconstruction. \code{\link[=fitted.mmefm_fit]{fitted.mmefm_fit()}} uses global and local factor scores and loadings, including refitted global main loadings. \code{check_Y} is an intermediate residual, not the final model residual; use \code{\link[=residuals.mmefm_fit]{residuals.mmefm_fit()}} for the latter.
+
+With \code{rank = NULL}, \code{\link[=select_MMEFM_rank]{select_MMEFM_rank()}} is followed by a fresh known-rank fit using the same seed. Supplying that selected rank explicitly gives the same statistical estimates. Both stochastic stages preserve the caller's RNG state, including on error.
+
+Global main-effect ranks must not exceed T. Van Loan alignment or refitting additionally requires \code{kr * kc <= T}. These bounds do not guarantee nonsingular Gram systems. Singular unregularized systems error without numerical fallback or rank repair. Iteration-limit warnings retain the final iterates; inspect \code{fit$convergence}.
+}
+\examples{
+rank <- list(r1 = 1L, l1 = 1L, r2 = rep(1L, 3), l2 = rep(1L, 3),
+             kr = 1L, kc = 1L, kr_m = rep(1L, 3), kc_m = rep(1L, 3))
+simulation <- gen_MMEFM(T = 40L, p = c(a = 6L, b = 7L, c = 8L), q = c(a = 7L, b = 8L, c = 6L),
+                        rank = rank, burn = 20L, filter_length = 40L, seed = 2026L)
+fit <- est_MMEFM(simulation$Xt, rank = simulation$rank, K0 = 8L, max_iter = 50L, seed = 2026L)
+summary(fit)
+fit$convergence
+lapply(fitted(fit), dim)
+lapply(fitted(fit, component = "global_common"), dim)
+vapply(residuals(fit), function(x) sqrt(mean(x^2)), numeric(1L))
+}
+\seealso{
+\code{\link[=gen_MMEFM]{gen_MMEFM()}}, \code{\link[=select_MMEFM_rank]{select_MMEFM_rank()}}, \code{\link[=detect_MMEFM_global]{detect_MMEFM_global()}}, \code{\link[=fitted.mmefm_fit]{fitted.mmefm_fit()}}, \code{\link[=residuals.mmefm_fit]{residuals.mmefm_fit()}}
 }

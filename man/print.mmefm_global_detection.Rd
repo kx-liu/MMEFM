@@ -2,18 +2,21 @@
 % Please edit documentation in R/global-detection.R
 \name{print.mmefm_global_detection}
 \alias{print.mmefm_global_detection}
-\title{Print global common-factor detection}
+\title{Print global common-factor detection results}
 \usage{
 \method{print}{mmefm_global_detection}(x, ...)
 }
 \arguments{
-\item{x}{An \code{mmefm_global_detection} object.}
+\item{x}{An \code{mmefm_global_detection} returned by \code{\link[=detect_MMEFM_global]{detect_MMEFM_global()}}.}
 
 \item{...}{Further arguments, currently unused.}
 }
 \value{
-The input invisibly.
+The input object invisibly.
 }
 \description{
-Print global common-factor detection
+Display the second-largest statistic, bootstrap cutoff, calibration level, existence decision, and selected groups.
+}
+\seealso{
+\code{\link[=detect_MMEFM_global]{detect_MMEFM_global()}}
 }

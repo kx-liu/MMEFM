@@ -12,15 +12,23 @@
 )
 }
 \arguments{
-\item{object}{An \code{mmefm_fit} object.}
+\item{object}{An \code{mmefm_fit} returned by \code{\link[=est_MMEFM]{est_MMEFM()}}.}
 
-\item{component}{Component to reconstruct: \code{"global_main"} uses the global mean and refitted main loadings; \code{"local_main"} uses local means, loadings, and scores; \code{"main"} sums these structured main effects; \code{"global_common"} uses \code{Q_tilde}, \code{G_tilde}, and \code{J_tilde}; \code{"local_common"} uses \code{R_hat}, \code{F_hat}, and \code{C_hat}; \code{"all"} sums main and both common components.}
+\item{component}{Component to reconstruct. \code{"all"} (default) sums all four structured components; \code{"main"} sums global and local main effects. \code{"global_main"} and \code{"local_main"} include their respective grand means, row main effects, and column main effects. \code{"global_common"} and \code{"local_common"} give the corresponding matrix-factor interactions.}
 
 \item{...}{Further arguments, currently unused.}
 }
 \value{
-A list of T x p_m x q_m arrays preserving group names. Main components use the final structured estimator, not the raw direct moments. \code{check_Y} is not an additional fitted component.
+A list of \verb{T x p_m x q_m} arrays preserving the data's group names and dimensions.
 }
 \description{
-Reconstruct fitted MMEFM components
+Recover the estimated signal or one of its global and local components from an MMEFM fit.
+}
+\details{
+Global main effects use \code{A1_tilde} and \code{B1_tilde} with the global \code{alpha_hat} and \code{beta_hat} scores. Local main effects use \code{A2_hat} and \code{B2_hat} with group-local scores. These final factor representations differ from the direct moment estimates in \code{object$main_effect$direct}.
+
+Global common components use \code{Q_tilde}, \code{G_tilde}, and \code{J_tilde}. Local common components use \code{R_hat}, \code{F_hat}, and \code{C_hat}. \code{check_Y} is an intermediate residual and is not an additional fitted component.
+}
+\seealso{
+\code{\link[=est_MMEFM]{est_MMEFM()}} for an executable example, \code{\link[=residuals.mmefm_fit]{residuals.mmefm_fit()}}, \code{\link[=summary.mmefm_fit]{summary.mmefm_fit()}}
 }

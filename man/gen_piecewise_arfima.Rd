@@ -18,17 +18,17 @@ gen_piecewise_arfima(
 )
 }
 \arguments{
-\item{T}{Positive whole-number time dimension within R's integer range.}
+\item{T}{Positive whole-number sample length within R's integer range.}
 
 \item{n}{Positive whole-number number of series within R's integer range. The series dimension is retained when n = 1.}
 
-\item{d_vec}{Shared numeric vector of finite memory parameters strictly below 0.5, a shared \code{list(d = ..., seg_lens = ...)}, or a list of length n containing either specification for each series. Numeric vectors split T approximately equally, with the remainder in the last segment. Explicit lengths must be positive whole numbers summing to T. No lower bound on d is imposed.}
+\item{d_vec}{A shared numeric vector of finite memory parameters below 0.5, a shared \code{list(d = ..., seg_lens = ...)}, or a list of length n specifying each series. Numeric vectors split T approximately equally, with the remainder in the final segment. Explicit segment lengths are positive whole numbers summing to T. No lower bound on d is imposed.}
 
-\item{phi}{Nonempty finite numeric AR coefficient vector in lag order: \code{X[t] = phi[1]*X[t-1] + ... + phi[p]*X[t-p] + innovation[t]}. All roots of \code{1 - phi[1]*z - ... - phi[p]*z^p} must lie strictly outside the unit circle. A scalar specifies AR(1) with absolute value below one; stable higher-order coefficients may individually exceed one in magnitude.}
+\item{phi}{Nonempty finite AR coefficient vector in lag order: \code{X[t] = phi[1]*X[t-1] + ... + phi[p]*X[t-p] + innovation[t]}. All roots of \code{1 - phi[1]*z - ... - phi[p]*z^p} must lie strictly outside the unit circle. A scalar specifies AR(1) with absolute value below one; stable higher-order coefficients may individually exceed one in magnitude.}
 
 \item{innovation}{Gaussian (default) or raw, unstandardized Student-t innovations.}
 
-\item{df}{Finite positive Student-t degrees of freedom; used for innovation draws only with Student-t. Small df need not provide finite variance or satisfy the manuscript's moment assumptions.}
+\item{df}{Finite positive Student-t degrees of freedom, used for Student-t draws only. Small df may give infinite variance or violate the manuscript's moment assumptions.}
 
 \item{burn}{Nonnegative whole-number burn-in within R's integer range.}
 
@@ -36,18 +36,22 @@ gen_piecewise_arfima(
 
 \item{seed}{Nonnegative whole-number seed within R's integer range. The caller's RNG state and kind are preserved on success and error; repeated calls agree under the same seed and RNG kind.}
 
-\item{return_filters}{One nonmissing logical indicating whether to return deterministic filter information alongside the series.}
+\item{return_filters}{One nonmissing logical. TRUE returns deterministic filter information alongside the series.}
 }
 \value{
-With return_filters = FALSE, a finite numeric T x n matrix. With TRUE, a list containing exactly \code{series} (the identical matrix), \code{phi} (the supplied AR coefficients), \code{filter_length}, \code{short_filter} (coefficients at lags 0 through filter_length), and \code{series_specs} (a list of length n). Each series specification contains exactly \code{d}, \code{seg_lens}, inclusive \code{seg_start} and \code{seg_end} indices, and \code{fractional_filters}, one lag-0-through-filter_length coefficient vector per segment. For zero memory, short_filter is an inspection representation; simulation uses recursion. Metadata generation consumes no random draws.
+With \code{return_filters = FALSE}, a finite numeric \verb{T x n} matrix. With TRUE, a list containing \code{series} (the same matrix), supplied \code{phi}, \code{filter_length}, \code{short_filter}, and \code{series_specs}.
+
+\code{short_filter} contains AR impulse-response coefficients at lags 0 through \code{filter_length}. Each of the n \code{series_specs} contains \code{d}, \code{seg_lens}, inclusive \code{seg_start}/\code{seg_end} indices, and one \code{fractional_filters} coefficient vector per segment at those same lags. For zero memory, \code{short_filter} is an inspection representation; simulation uses recursion. Returning metadata consumes no additional random draws.
 }
 \description{
-Simulate one or more series with a stable AR(p) short-memory component and segment-specific fractional-memory filters.
+Simulate independent ARFIMA(p, d, 0) series with a stable AR short-memory component and segment-specific fractional memory. The memory specification may be shared across series or differ by series.
 }
 \details{
-Innovations are generated in series-column order. The retained sample follows burn + 2*filter_length warmup observations. Nonzero memory uses the truncated AR impulse response followed by segment-specific fractional filters; the fractional parameter changes with the output segment, without restarting the innovation stream. Entirely zero-memory series use direct AR recursion from zero pre-sample values rather than finite convolution. Scalar AR(1) uses the established recursion or geometric power filter exactly.
+Within a segment of memory d, the fractional filter represents \eqn{(1-B)^{-d}}, where B is the lag operator. Zero memory gives an AR process; positive memory below 0.5 introduces long-memory dependence. Changing d between segments need not give a stationary series over the whole sample.
 
-AR stability concerns the short-memory component only. Piecewise fractional-memory specifications are not generally stationary over the whole sample, and d < 0.5 alone does not establish every manuscript assumption. Nonfinite generated series produce an error without numerical repair.
+Nonzero memory uses a truncated AR impulse response followed by segment-specific fractional filters. The output segment determines its fractional parameter; the innovation stream is not restarted at a boundary. Entirely zero-memory series use direct AR recursion from zero pre-sample values. Scalar AR(1) uses the corresponding geometric filter or recursion. The retained sample follows \code{burn + 2*filter_length} warmup observations, and innovations are generated in series-column order.
+
+AR stability concerns only the short-memory component. The bounds on d and df do not by themselves establish every theoretical assumption. Nonfinite generated series error without numerical repair.
 }
 \examples{
 series <- gen_piecewise_arfima(
@@ -55,4 +59,7 @@ series <- gen_piecewise_arfima(
   burn = 4L, filter_length = 8L, seed = 2026L
 )
 dim(series)
+}
+\seealso{
+\code{\link[=gen_MMEFM]{gen_MMEFM()}} for grouped matrix-valued simulation
 }

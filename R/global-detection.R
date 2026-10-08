@@ -183,25 +183,44 @@
 
 #' Detect and screen global common factors in MMEFM
 #'
-#' Practical manuscript detection based on group statistics S_G,m and circular-shift bootstrap calibration.
-#' @param Xt A canonical list of finite T x p_m x q_m arrays (see [est_MMEFM()]), or an `mmefm_fit`. Raw arrays are reduced to the direct main-effect residual `check_Y`; a fit supplies its stored `check_Y`, whose dimensions are validated anew.
-#' @param rank NULL to select ranks for raw data or use a supplied fit's ranks; otherwise a complete canonical eight-field rank list or `mmefm_rank`. Supplied ranks override fit ranks. Statistical values are validated again; rank-object diagnostics are preserved.
-#' @param B Positive whole-number integer-range bootstrap size, default 199. Re-estimation is expensive; use small values such as 3 for examples and smoke checks.
-#' @param alpha Finite calibration level strictly between zero and one.
-#' @param reference_group Integer group index between 1 and M, held fixed during bootstrap.
-#' @param parallel One nonmissing logical. FALSE preserves sequential bootstrap execution; TRUE uses a PSOCK cluster on Windows, macOS, and Linux when both B and num.cores exceed one.
-#' @param num.cores Positive whole-number maximum worker count, default 4. Actual workers are min(B, num.cores); one worker or B = 1 uses serial execution without a cluster. Choose a count within your scheduler allocation.
+#' Test whether a global common component is shared by at least two groups, and screen the groups that share it. Group statistics are calibrated by a circular-shift bootstrap.
+#' @param Xt A list of finite `T x p_m x q_m` arrays as in [est_MMEFM()], or an `mmefm_fit`. Arrays are reduced to direct additive residuals `check_Y`; a fit supplies its stored `check_Y`.
+#' @param rank NULL to select ranks for array input or use a fit's ranks. Alternatively, supply a complete eight-field rank list or `mmefm_rank` as in [est_MMEFM()]. Supplied ranks override fit ranks. Rank values are validated, and any rank-object diagnostics are retained.
+#' @param B Positive whole-number bootstrap size. The default is 199. Values such as 3 are suitable only for illustrative examples, not reliable calibration.
+#' @param alpha Finite significance level strictly between zero and one, used for the bootstrap cutoff.
+#' @param reference_group Integer index from 1 through M identifying the group held fixed during bootstrap shifts.
+#' @param parallel One nonmissing logical. FALSE runs the bootstrap serially. TRUE uses PSOCK workers on Windows, macOS, and Linux when B and `num.cores` both exceed one.
+#' @param num.cores Positive whole-number maximum worker count. At most `min(B, num.cores)` workers are used; one worker or B = 1 gives serial execution. Stay within the available resource allocation.
 #' @inheritParams select_MMEFM_rank
-#' @details Each residual group is divided by its RMS scale, `sqrt(mean(check_Y^2))`, without further centering. Algorithm 1 re-estimates initial Q/J spaces on these standardized arrays, even for fit input; stored fitted loadings are never reused.
+#' @param seed Nonnegative whole number within R's integer range controlling projection directions and bootstrap shifts. The caller's RNG state is restored on return or error.
+#' @details
+#' Detection concerns global common matrix-factor interactions, not global main effects. Each group's direct residual is divided by its RMS scale without further centering. Initial global loading spaces are re-estimated from these standardized residuals, including for fit input.
 #'
-#' S_G,m sums, over other groups, the largest squared cross covariance between projected global-core coordinates, divided by the square of the strongest within-group projected-coordinate mean square. Denominator row/column spaces use total global plus local common ranks, ignoring their split.
+#' The group statistic \eqn{S_{G,m}} measures cross-group dependence relative to within-group variation. Its numerator sums the largest squared cross-group moments of projected global-core coordinates over other groups. Its denominator is the square of the largest within-group projected-coordinate mean square, using total global plus local common loading dimensions. These moments are not additionally demeaned over time.
 #'
-#' Algorithm 2 holds the reference group fixed and independently circularly shifts every other group's whole time series uniformly by 0 through T-1. Every replication re-estimates Q/J and denominator loading spaces at fixed ranks. One Type-8 empirical (1-alpha) quantile of bootstrap second-largest S_G values calibrates both existence and screening. Existence requires the observed second-largest statistic to strictly exceed the cutoff. Final screening is empty unless existence rejects and at least two groups strictly exceed that same cutoff.
+#' The existence test uses the second-largest group statistic because a global common component must involve at least two groups. The bootstrap holds the reference group fixed and independently circularly shifts each other group's time series by a uniformly drawn offset from 0 through T-1. Loading spaces and statistics are re-estimated at fixed ranks for each replication. This retains within-group temporal dependence while disrupting synchronous cross-group alignment.
 #'
-#' All detector randomness uses one scoped seed after any separately scoped rank selection; caller RNG state is restored on success and error. Observed projection non-convergence warns once; bootstrap non-convergence warns once in aggregate. Final iterates remain usable. Invalid scales, denominators, and numerical failures error without floors, repair, or discarded draws; bootstrap errors identify the replication. Whole-sample circular shifts assume a single stationary segment.
+#' One Type-8 empirical `(1 - alpha)` quantile of bootstrap second-largest statistics supplies the common cutoff. Existence requires the observed second-largest statistic to strictly exceed it. Final screening retains groups strictly above the same cutoff only if existence is detected and at least two groups qualify; otherwise the selected set is empty.
 #'
-#' Parallel bootstrap shifts and half-panel indices are pre-generated on the master in the serial RNG order. Workers compute deterministically, giving the same replication-specific random inputs and statistics under the same seed regardless of scheduling. Workers load the master's installed MMEFM namespace and are cleaned up on completion or error. Parallel execution adds memory and process-startup overhead. Nested worker pools and multithreaded BLAS can oversubscribe resources; when running Monte Carlo replications in parallel externally, normally leave parallel = FALSE.
-#' @return An `mmefm_global_detection` list containing exactly `call`, group `statistic`, observed `second_largest`, `cutoff`, logical `exists`, group logical vectors `initial_selected` and `selected`, group RMS `scale`, canonical `rank`, and `bootstrap`. The bootstrap list contains exactly `B`, `alpha`, `reference_group`, and the length-B numeric calibration sample `second_largest`. Group-indexed vectors preserve optional names. Loading matrices and residual workspaces are not returned.
+#' Whole-sample circular shifts assume a single stationary segment. They are not justified across arbitrary structural breaks or piecewise nonstationary series. The model's allowance for nonstationary main effects does not remove this bootstrap restriction.
+#'
+#' Invalid residual scales, denominators, and numerical failures error without repair or discarded bootstrap draws. Bootstrap errors identify the replication. Projection non-convergence retains final iterates and warns for the observed statistic or, in aggregate, for bootstrap replications. The caller's RNG state is restored on success or error; automatic rank selection uses a separate scoped seed.
+#'
+#' Parallel execution requires the current installed MMEFM namespace. Serial and parallel calls use matching replication-specific randomness under the same seed; workers are cleaned up on completion or error. Process startup and memory overhead can make small bootstraps slower. Avoid nested worker pools when replications are already parallelized externally.
+#' @return An `mmefm_global_detection` object with `call`, group `statistic`, observed `second_largest`, `cutoff`, and logical `exists`. `initial_selected` marks groups exceeding the cutoff; `selected` applies the existence and at-least-two-groups requirements. Group vectors preserve optional names.
+#'
+#' `scale` contains group residual RMS values, and `rank` contains the validated `mmefm_rank`. `bootstrap` contains `B`, `alpha`, `reference_group`, and the length-B vector `second_largest` used for calibration. Loading estimates and residual arrays are not returned.
+#' @seealso [est_MMEFM()], [select_MMEFM_rank()], [gen_MMEFM()]
+#' @examples
+#' rank <- list(r1 = 1L, l1 = 1L, r2 = rep(1L, 3), l2 = rep(1L, 3),
+#'              kr = 1L, kc = 1L, kr_m = rep(1L, 3), kc_m = rep(1L, 3))
+#' simulation <- gen_MMEFM(T = 40L, p = c(a = 6L, b = 7L, c = 8L), q = c(a = 7L, b = 8L, c = 6L),
+#'                         rank = rank, burn = 20L, filter_length = 40L, seed = 2026L)
+#' # B = 3 illustrates the call; it does not provide reliable calibration.
+#' detection <- detect_MMEFM_global(simulation$Xt, rank = simulation$rank, B = 3L,
+#'                                  K0 = 8L, max_iter = 50L, parallel = FALSE, seed = 2026L)
+#' detection
+#' detection$selected
 #' @export
 detect_MMEFM_global <- function(Xt, rank = NULL, B = 199L, alpha = 0.05, reference_group = 1L,
                                K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2026L, verbose = FALSE,
@@ -292,10 +311,13 @@ detect_MMEFM_global <- function(Xt, rank = NULL, B = 199L, alpha = 0.05, referen
   )
 }
 
-#' Print global common-factor detection
-#' @param x An `mmefm_global_detection` object.
+#' Print global common-factor detection results
+#'
+#' Display the second-largest statistic, bootstrap cutoff, calibration level, existence decision, and selected groups.
+#' @param x An `mmefm_global_detection` returned by [detect_MMEFM_global()].
 #' @param ... Further arguments, currently unused.
-#' @return The input invisibly.
+#' @return The input object invisibly.
+#' @seealso [detect_MMEFM_global()]
 #' @export
 print.mmefm_global_detection <- function(x, ...) {
   cat(sprintf("MMEFM global detection: %d groups\n", length(x$statistic)))

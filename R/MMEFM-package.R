@@ -1,6 +1,8 @@
 #' Multilevel Main Effects Matrix Factor Model Tools
 #'
-#' Estimation, rank selection, global common-factor detection and screening, and simulation for the Multilevel Main Effects Matrix Factor Model, including global and local main effects and common matrix-factor components.
+#' Model grouped matrix-valued time series while separating shared dynamics from group-specific variation. MMEFM distinguishes global and local grand means, row and column main effects, and common matrix-factor interactions.
+#' @details [gen_MMEFM()] simulates grouped data and generating quantities; [gen_piecewise_arfima()] simulates scalar series with segment-specific memory. [select_MMEFM_rank()] estimates loading ranks, and [est_MMEFM()] fits the model at supplied or automatically selected ranks. Use `summary()`, `fitted()`, and `residuals()` to inspect a fit and reconstruct its components. [detect_MMEFM_global()] tests for a global common component and screens the groups sharing it.
 #'
+#' The accompanying methodology is developed in *Multilevel Main Effects Matrix Factor Model* by Kaixin Liu, Clifford Lam, and Zetai Cen. Main effects may be nonstationary under the manuscript's conditions. Whole-sample circular-shift detection, however, requires a single stationary segment. See `vignette("getting-started", package = "MMEFM")` for a worked example.
 #' @keywords internal
 "_PACKAGE"

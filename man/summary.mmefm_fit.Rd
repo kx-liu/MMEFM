@@ -4,7 +4,7 @@
 \alias{summary.mmefm_fit}
 \alias{print.summary.mmefm_fit}
 \alias{print.mmefm_fit}
-\title{Summarize an MMEFM fit}
+\title{Summarize and print an MMEFM fit}
 \usage{
 \method{summary}{mmefm_fit}(object, ...)
 
@@ -13,17 +13,21 @@
 \method{print}{mmefm_fit}(x, ...)
 }
 \arguments{
-\item{object}{An \code{mmefm_fit} object.}
+\item{object}{An \code{mmefm_fit} returned by \code{\link[=est_MMEFM]{est_MMEFM()}}.}
 
 \item{...}{Further arguments, currently unused.}
 
 \item{x}{An \code{mmefm_fit} or \code{summary.mmefm_fit} object, as appropriate.}
 }
 \value{
-A compact object of class \code{summary.mmefm_fit} containing the call, dimensions, eight ranks without diagnostics, alignment method, and refit method. Operational convergence metadata is omitted.
-
-Print methods return their input invisibly.
+\code{summary()} returns an object of class \code{summary.mmefm_fit} containing \code{call}, \code{dimensions}, the eight statistical \code{rank} values, \code{alignment_method}, and \code{refit_method}. The print methods return their input invisibly.
 }
 \description{
-Summarize an MMEFM fit
+Report the fitted model's dimensions, global and local ranks, alignment method, and refitting method.
+}
+\details{
+The summary omits rank-selection diagnostics and convergence information. Inspect \code{object$rank$diagnostics} and \code{object$convergence} for these, respectively. Printing a fit displays the same model summary.
+}
+\seealso{
+\code{\link[=est_MMEFM]{est_MMEFM()}} for an executable example, \code{\link[=fitted.mmefm_fit]{fitted.mmefm_fit()}}, \code{\link[=residuals.mmefm_fit]{residuals.mmefm_fit()}}
 }

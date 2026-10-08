@@ -1,25 +1,46 @@
 #' Estimate a Multilevel Main Effects Matrix Factor Model
 #'
-#' Fits global and local main effects and common matrix-factor components at complete positive ranks.
+#' Estimate global and local grand means, row and column main effects, and common matrix-factor components in grouped matrix-valued time series.
 #' @inheritParams select_MMEFM_rank
-#' @param rank NULL for automatic rank selection, a complete named list with `r1`, `l1`, `r2`, `l2`, `kr`, `kc`, `kr_m`, and `kc_m`, or an `mmefm_rank` object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local ranks are reordered to named `Xt` groups. Each rank is smaller than its corresponding spatial dimension, and under IC1, `r1 + r2[m]` and `kr + kr_m[m]` must be at most `p_m - 1`, while `l1 + l2[m]` and `kc + kc_m[m]` must be at most `q_m - 1`. Equality at dimension minus one is allowed.
-#' @param alignment_method Global common-coordinate alignment: `"VanLoan"` (default) or `"Procrustes"`.
-#' @param max_iter_procrustes Positive whole-number integer-range limit for Procrustes alignment iterations.
-#' @param tol_procrustes Finite positive relative-objective tolerance for Procrustes alignment.
-#' @param refit_method Global common-loading refit: `"VanLoan"` (default) or `"ALS"`. Alignment and refit choices are independent.
-#' @param max_iter_als Positive whole-number integer-range limit for ALS refit iterations.
-#' @param tol_als Finite positive relative-residual-objective tolerance for ALS refitting.
-#' @param lambda Finite nonnegative ridge parameter for main-effect Gram systems only. The default zero implements the manuscript estimator without regularization.
-#' @details Automatic selection is followed by a fresh known-rank fit with the same seed, so supplying the selected rank explicitly gives the same statistical estimates. Both public stochastic stages preserve the caller's RNG state, including on error.
+#' @param rank NULL for automatic selection, a complete named list containing exactly `r1`, `l1`, `r2`, `l2`, `kr`, `kc`, `kr_m`, and `kc_m`, or an `mmefm_rank` object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local vectors are matched to named `Xt` groups. Each rank is smaller than its spatial dimension. Under IC1, row sums `r1 + r2[m]` and `kr + kr_m[m]` are at most `p_m - 1`; column sums `l1 + l2[m]` and `kc + kc_m[m]` are at most `q_m - 1`. Equality is allowed.
+#' @param alignment_method Method for aligning group-specific global common-factor coordinates: `"VanLoan"` (default) or `"Procrustes"`.
+#' @param max_iter_procrustes Positive whole-number limit on Procrustes alignment iterations.
+#' @param tol_procrustes Finite positive tolerance for relative change in the Procrustes alignment score.
+#' @param refit_method Method for refitting global common loadings: `"VanLoan"` (default) or `"ALS"`. This choice is independent of `alignment_method`.
+#' @param max_iter_als Positive whole-number limit on alternating least-squares (ALS) refitting iterations.
+#' @param tol_als Finite positive tolerance for relative change in the squared-residual objective during ALS refitting.
+#' @param lambda Finite nonnegative ridge parameter for main-effect Gram systems only. Zero, the default, gives the unregularized manuscript estimator.
+#' @details
+#' Direct moment estimators first recover the combined grand mean and centered row and column main effects in each group. Cross-group moments and projections separate global and local main-effect structures. Shared main-effect scores are estimated by pooling temporal information, and their global loadings are refitted.
 #'
-#' Global main-effect ranks must not exceed T. If either alignment or refitting uses Van Loan, `kr * kc <= T` is also necessary. These dimension checks do not guarantee nonsingular Gram systems: singular unregularized systems remain visible errors, with no numerical fallback or silent rank repair.
+#' The direct additive estimates are subtracted to form `check_Y`. Iterative projection estimates initial global common loading spaces from these residuals. Projections then recover local common loadings and factors. After removing local common components, group-specific global common-factor coordinates are aligned and pooled into one shared factor series. Global common loadings are refitted to that series.
 #'
-#' Iteration-limit non-convergence produces a warning for each affected active stage: rank-selection projection, final projection, Procrustes alignment, or ALS refitting. Final iterates are retained, with small operational convergence metadata available programmatically.
-#' @return An `mmefm_fit` list with exactly `call`, `dimensions`, `rank` (an `mmefm_rank`), `main_effect`, `common_component`, `check_Y`, and `convergence`. Observed arrays are not stored separately.
+#' Van Loan alignment approximates the between-group coordinate mapping by a Kronecker product. Van Loan refitting similarly approximates the unconstrained fitted loading product, with the aligned global core held fixed. Optional Procrustes alignment alternates orthogonal row and column transformations. Optional ALS refitting alternates row and column loading updates and updates the shared global core after each sweep.
 #'
-#' Main effects retain `direct`, `global`, and `local` estimates. Common components retain `global`, `local`, and method-specific `alignment` estimates. Global `Q_hat`/`J_hat` are the original Algorithm 1 loadings, while `Q_tilde`/`J_tilde` are final refitted loadings. `G_hat` is estimated after alignment; `G_tilde` equals `G_hat` for Van Loan refitting and is updated after every Q/J sweep for ALS. Local common estimates are `R_hat`, `C_hat`, and `F_hat`.
+#' The direct main-effect estimates are not the final low-rank main-effect reconstruction. [fitted.mmefm_fit()] uses global and local factor scores and loadings, including refitted global main loadings. `check_Y` is an intermediate residual, not the final model residual; use [residuals.mmefm_fit()] for the latter.
 #'
-#' `convergence` contains final-estimation `projection`, `procrustes`, and `als` iteration counts and logical indicators; inactive iterative methods use NULL. See [fitted.mmefm_fit()] for component reconstruction and [residuals.mmefm_fit()] for residuals.
+#' With `rank = NULL`, [select_MMEFM_rank()] is followed by a fresh known-rank fit using the same seed. Supplying that selected rank explicitly gives the same statistical estimates. Both stochastic stages preserve the caller's RNG state, including on error.
+#'
+#' Global main-effect ranks must not exceed T. Van Loan alignment or refitting additionally requires `kr * kc <= T`. These bounds do not guarantee nonsingular Gram systems. Singular unregularized systems error without numerical fallback or rank repair. Iteration-limit warnings retain the final iterates; inspect `fit$convergence`.
+#' @return An object of class `mmefm_fit` with `call`, `dimensions`, `rank`, `main_effect`, `common_component`, `check_Y`, and `convergence`. `rank` is an `mmefm_rank`; observed arrays are not stored separately.
+#'
+#' `main_effect` contains `direct` estimates (`c_hat`, `a_hat`, `b_hat`), plus `global` and `local` grand means, loadings, and factor scores. Initial global loadings `A1_hat` and `B1_hat` are retained alongside refitted `A1_tilde` and `B1_tilde`. Local loadings are `A2_hat` and `B2_hat`; both levels store `alpha_hat` and `beta_hat`.
+#'
+#' `common_component` contains `global`, `local`, and method-specific `alignment` estimates. Global `Q_hat` and `J_hat` are initial loading estimates; `Q_tilde` and `J_tilde` are refitted loadings. `G_hat` is the aligned, pooled core. `G_tilde` equals `G_hat` for Van Loan refitting and is updated during ALS. Local estimates are `R_hat`, `C_hat`, and `F_hat`.
+#'
+#' `check_Y` contains the direct additive residual arrays. `convergence` records iteration counts and convergence indicators for final `projection`, `procrustes`, and `als` stages; inactive methods are NULL. [summary.mmefm_fit()] reports dimensions, ranks, and method choices, not convergence diagnostics.
+#' @seealso [gen_MMEFM()], [select_MMEFM_rank()], [detect_MMEFM_global()], [fitted.mmefm_fit()], [residuals.mmefm_fit()]
+#' @examples
+#' rank <- list(r1 = 1L, l1 = 1L, r2 = rep(1L, 3), l2 = rep(1L, 3),
+#'              kr = 1L, kc = 1L, kr_m = rep(1L, 3), kc_m = rep(1L, 3))
+#' simulation <- gen_MMEFM(T = 40L, p = c(a = 6L, b = 7L, c = 8L), q = c(a = 7L, b = 8L, c = 6L),
+#'                         rank = rank, burn = 20L, filter_length = 40L, seed = 2026L)
+#' fit <- est_MMEFM(simulation$Xt, rank = simulation$rank, K0 = 8L, max_iter = 50L, seed = 2026L)
+#' summary(fit)
+#' fit$convergence
+#' lapply(fitted(fit), dim)
+#' lapply(fitted(fit, component = "global_common"), dim)
+#' vapply(residuals(fit), function(x) sqrt(mean(x^2)), numeric(1L))
 #' @export
 est_MMEFM <- function(
     Xt, rank = NULL, K0 = 20L, max_iter = 20L, tol = 1e-4,
@@ -98,10 +119,15 @@ est_MMEFM <- function(
 
 #' Reconstruct fitted MMEFM components
 #'
-#' @param object An `mmefm_fit` object.
-#' @param component Component to reconstruct: `"global_main"` uses the global mean and refitted main loadings; `"local_main"` uses local means, loadings, and scores; `"main"` sums these structured main effects; `"global_common"` uses `Q_tilde`, `G_tilde`, and `J_tilde`; `"local_common"` uses `R_hat`, `F_hat`, and `C_hat`; `"all"` sums main and both common components.
+#' Recover the estimated signal or one of its global and local components from an MMEFM fit.
+#' @param object An `mmefm_fit` returned by [est_MMEFM()].
+#' @param component Component to reconstruct. `"all"` (default) sums all four structured components; `"main"` sums global and local main effects. `"global_main"` and `"local_main"` include their respective grand means, row main effects, and column main effects. `"global_common"` and `"local_common"` give the corresponding matrix-factor interactions.
 #' @param ... Further arguments, currently unused.
-#' @return A list of T x p_m x q_m arrays preserving group names. Main components use the final structured estimator, not the raw direct moments. `check_Y` is not an additional fitted component.
+#' @details Global main effects use `A1_tilde` and `B1_tilde` with the global `alpha_hat` and `beta_hat` scores. Local main effects use `A2_hat` and `B2_hat` with group-local scores. These final factor representations differ from the direct moment estimates in `object$main_effect$direct`.
+#'
+#' Global common components use `Q_tilde`, `G_tilde`, and `J_tilde`. Local common components use `R_hat`, `F_hat`, and `C_hat`. `check_Y` is an intermediate residual and is not an additional fitted component.
+#' @return A list of `T x p_m x q_m` arrays preserving the data's group names and dimensions.
+#' @seealso [est_MMEFM()] for an executable example, [residuals.mmefm_fit()], [summary.mmefm_fit()]
 #' @export
 fitted.mmefm_fit <- function(object, component = c("all", "main", "global_main", "local_main",
   "global_common", "local_common"), ...) {
@@ -147,10 +173,15 @@ fitted.mmefm_fit <- function(object, component = c("all", "main", "global_main",
   result
 }
 
-#' Residuals of an MMEFM fit
+#' Compute residuals of an MMEFM fit
 #'
+#' Subtract the complete final fitted signal from the observed group arrays.
 #' @inheritParams fitted.mmefm_fit
-#' @return A named list of T x p_m x q_m residual arrays. Observations are reconstructed from direct `c_hat`, `a_hat`, `b_hat`, and `check_Y`, then the complete final structured fit is subtracted. No separate observed-data copy is stored.
+#' @details The final fitted signal contains low-rank global and local main effects and common components. It differs from the direct additive estimate removed when constructing `object$check_Y`. Hence `check_Y` and the final model residual are distinct.
+#'
+#' The observations are recovered from the retained direct moments and `check_Y`; a separate observed-data copy is not needed.
+#' @return A list of `T x p_m x q_m` residual arrays preserving group names and dimensions.
+#' @seealso [fitted.mmefm_fit()], [est_MMEFM()] for an executable example
 #' @export
 residuals.mmefm_fit <- function(object, ...) {
   result <- object$check_Y
@@ -169,10 +200,13 @@ residuals.mmefm_fit <- function(object, ...) {
   result
 }
 
-#' Summarize an MMEFM fit
+#' Summarize and print an MMEFM fit
 #'
+#' Report the fitted model's dimensions, global and local ranks, alignment method, and refitting method.
 #' @inheritParams fitted.mmefm_fit
-#' @return A compact object of class `summary.mmefm_fit` containing the call, dimensions, eight ranks without diagnostics, alignment method, and refit method. Operational convergence metadata is omitted.
+#' @details The summary omits rank-selection diagnostics and convergence information. Inspect `object$rank$diagnostics` and `object$convergence` for these, respectively. Printing a fit displays the same model summary.
+#' @return `summary()` returns an object of class `summary.mmefm_fit` containing `call`, `dimensions`, the eight statistical `rank` values, `alignment_method`, and `refit_method`. The print methods return their input invisibly.
+#' @seealso [est_MMEFM()] for an executable example, [fitted.mmefm_fit()], [residuals.mmefm_fit()]
 #' @export
 summary.mmefm_fit <- function(object, ...) {
   structure(list(call = object$call, dimensions = object$dimensions,
@@ -184,7 +218,6 @@ summary.mmefm_fit <- function(object, ...) {
 
 #' @rdname summary.mmefm_fit
 #' @param x An `mmefm_fit` or `summary.mmefm_fit` object, as appropriate.
-#' @return Print methods return their input invisibly.
 #' @export
 print.summary.mmefm_fit <- function(x, ...) {
   cat(sprintf("MMEFM fit: %d groups, T = %d\n", x$dimensions$M, x$dimensions$T))

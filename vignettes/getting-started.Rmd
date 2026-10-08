@@ -52,7 +52,7 @@ lapply(Xt, dim)
 
 The data use Gaussian innovations and zero fractional memory with short-memory dynamics. `simulation$rank` is known because the model was specified when generating the data. For other simulation designs, see `?gen_MMEFM`.
 
-We now estimate the global and local structures at these ranks. The summary reports ranks, dimensions, and convergence information.
+We now estimate the global and local structures at these ranks. The summary reports the dimensions, ranks, alignment method, and refitting method. Convergence information is available in `fit$convergence`.
 
 ```{r estimation}
 fit <- est_MMEFM(Xt, rank = rank, K0 = 8L, max_iter = 50L, tol = 1e-4, seed = 2026L)

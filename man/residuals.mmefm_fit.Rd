@@ -2,18 +2,26 @@
 % Please edit documentation in R/fit.R
 \name{residuals.mmefm_fit}
 \alias{residuals.mmefm_fit}
-\title{Residuals of an MMEFM fit}
+\title{Compute residuals of an MMEFM fit}
 \usage{
 \method{residuals}{mmefm_fit}(object, ...)
 }
 \arguments{
-\item{object}{An \code{mmefm_fit} object.}
+\item{object}{An \code{mmefm_fit} returned by \code{\link[=est_MMEFM]{est_MMEFM()}}.}
 
 \item{...}{Further arguments, currently unused.}
 }
 \value{
-A named list of T x p_m x q_m residual arrays. Observations are reconstructed from direct \code{c_hat}, \code{a_hat}, \code{b_hat}, and \code{check_Y}, then the complete final structured fit is subtracted. No separate observed-data copy is stored.
+A list of \verb{T x p_m x q_m} residual arrays preserving group names and dimensions.
 }
 \description{
-Residuals of an MMEFM fit
+Subtract the complete final fitted signal from the observed group arrays.
+}
+\details{
+The final fitted signal contains low-rank global and local main effects and common components. It differs from the direct additive estimate removed when constructing \code{object$check_Y}. Hence \code{check_Y} and the final model residual are distinct.
+
+The observations are recovered from the retained direct moments and \code{check_Y}; a separate observed-data copy is not needed.
+}
+\seealso{
+\code{\link[=fitted.mmefm_fit]{fitted.mmefm_fit()}}, \code{\link[=est_MMEFM]{est_MMEFM()}} for an executable example
 }

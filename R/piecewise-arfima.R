@@ -1,20 +1,26 @@
 #' Generate piecewise ARFIMA time series
 #'
-#' Simulate one or more series with a stable AR(p) short-memory component and segment-specific fractional-memory filters.
-#' @param T Positive whole-number time dimension within R's integer range.
+#' Simulate independent ARFIMA(p, d, 0) series with a stable AR short-memory component and segment-specific fractional memory. The memory specification may be shared across series or differ by series.
+#' @param T Positive whole-number sample length within R's integer range.
 #' @param n Positive whole-number number of series within R's integer range. The series dimension is retained when n = 1.
-#' @param d_vec Shared numeric vector of finite memory parameters strictly below 0.5, a shared `list(d = ..., seg_lens = ...)`, or a list of length n containing either specification for each series. Numeric vectors split T approximately equally, with the remainder in the last segment. Explicit lengths must be positive whole numbers summing to T. No lower bound on d is imposed.
-#' @param phi Nonempty finite numeric AR coefficient vector in lag order: `X[t] = phi[1]*X[t-1] + ... + phi[p]*X[t-p] + innovation[t]`. All roots of `1 - phi[1]*z - ... - phi[p]*z^p` must lie strictly outside the unit circle. A scalar specifies AR(1) with absolute value below one; stable higher-order coefficients may individually exceed one in magnitude.
+#' @param d_vec A shared numeric vector of finite memory parameters below 0.5, a shared `list(d = ..., seg_lens = ...)`, or a list of length n specifying each series. Numeric vectors split T approximately equally, with the remainder in the final segment. Explicit segment lengths are positive whole numbers summing to T. No lower bound on d is imposed.
+#' @param phi Nonempty finite AR coefficient vector in lag order: `X[t] = phi[1]*X[t-1] + ... + phi[p]*X[t-p] + innovation[t]`. All roots of `1 - phi[1]*z - ... - phi[p]*z^p` must lie strictly outside the unit circle. A scalar specifies AR(1) with absolute value below one; stable higher-order coefficients may individually exceed one in magnitude.
 #' @param innovation Gaussian (default) or raw, unstandardized Student-t innovations.
-#' @param df Finite positive Student-t degrees of freedom; used for innovation draws only with Student-t. Small df need not provide finite variance or satisfy the manuscript's moment assumptions.
+#' @param df Finite positive Student-t degrees of freedom, used for Student-t draws only. Small df may give infinite variance or violate the manuscript's moment assumptions.
 #' @param burn Nonnegative whole-number burn-in within R's integer range.
 #' @param filter_length NULL for `min(2000, max(200, 5*T))`, or a nonnegative whole-number filter truncation length within R's integer range.
 #' @param seed Nonnegative whole-number seed within R's integer range. The caller's RNG state and kind are preserved on success and error; repeated calls agree under the same seed and RNG kind.
-#' @param return_filters One nonmissing logical indicating whether to return deterministic filter information alongside the series.
-#' @details Innovations are generated in series-column order. The retained sample follows burn + 2*filter_length warmup observations. Nonzero memory uses the truncated AR impulse response followed by segment-specific fractional filters; the fractional parameter changes with the output segment, without restarting the innovation stream. Entirely zero-memory series use direct AR recursion from zero pre-sample values rather than finite convolution. Scalar AR(1) uses the established recursion or geometric power filter exactly.
+#' @param return_filters One nonmissing logical. TRUE returns deterministic filter information alongside the series.
+#' @details
+#' Within a segment of memory d, the fractional filter represents \eqn{(1-B)^{-d}}, where B is the lag operator. Zero memory gives an AR process; positive memory below 0.5 introduces long-memory dependence. Changing d between segments need not give a stationary series over the whole sample.
 #'
-#' AR stability concerns the short-memory component only. Piecewise fractional-memory specifications are not generally stationary over the whole sample, and d < 0.5 alone does not establish every manuscript assumption. Nonfinite generated series produce an error without numerical repair.
-#' @return With return_filters = FALSE, a finite numeric T x n matrix. With TRUE, a list containing exactly `series` (the identical matrix), `phi` (the supplied AR coefficients), `filter_length`, `short_filter` (coefficients at lags 0 through filter_length), and `series_specs` (a list of length n). Each series specification contains exactly `d`, `seg_lens`, inclusive `seg_start` and `seg_end` indices, and `fractional_filters`, one lag-0-through-filter_length coefficient vector per segment. For zero memory, short_filter is an inspection representation; simulation uses recursion. Metadata generation consumes no random draws.
+#' Nonzero memory uses a truncated AR impulse response followed by segment-specific fractional filters. The output segment determines its fractional parameter; the innovation stream is not restarted at a boundary. Entirely zero-memory series use direct AR recursion from zero pre-sample values. Scalar AR(1) uses the corresponding geometric filter or recursion. The retained sample follows `burn + 2*filter_length` warmup observations, and innovations are generated in series-column order.
+#'
+#' AR stability concerns only the short-memory component. The bounds on d and df do not by themselves establish every theoretical assumption. Nonfinite generated series error without numerical repair.
+#' @return With `return_filters = FALSE`, a finite numeric `T x n` matrix. With TRUE, a list containing `series` (the same matrix), supplied `phi`, `filter_length`, `short_filter`, and `series_specs`.
+#'
+#' `short_filter` contains AR impulse-response coefficients at lags 0 through `filter_length`. Each of the n `series_specs` contains `d`, `seg_lens`, inclusive `seg_start`/`seg_end` indices, and one `fractional_filters` coefficient vector per segment at those same lags. For zero memory, `short_filter` is an inspection representation; simulation uses recursion. Returning metadata consumes no additional random draws.
+#' @seealso [gen_MMEFM()] for grouped matrix-valued simulation
 #' @examples
 #' series <- gen_piecewise_arfima(
 #'   T = 12L, n = 2L, d_vec = c(0, 0.2), phi = c(0.4, -0.1),
