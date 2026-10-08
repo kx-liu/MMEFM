@@ -1,8 +1,12 @@
 # Canonical axes are time, rows, columns; validation leaves the arrays untouched.
 .validate_Xt <- function(Xt) {
-  if (!is.list(Xt) || is.data.frame(Xt)) stop("Xt must be a list of group arrays.")
+  if (!is.list(Xt) || is.data.frame(Xt)) {
+    stop("Xt must be a list of group arrays.")
+  }
   M <- length(Xt)
-  if (M < 2L) stop("Xt must contain at least two groups.")
+  if (M < 2L) {
+    stop("Xt must contain at least two groups.")
+  }
   group_names <- names(Xt)
   if (!is.null(group_names) &&
       (anyNA(group_names) || any(!nzchar(group_names)) || anyDuplicated(group_names))) {
@@ -20,9 +24,15 @@
     if (dims[1L] < 1L || dims[2L] < 2L || dims[3L] < 2L) {
       stop(sprintf("Xt group %d must have T >= 1, p_m >= 2, and q_m >= 2.", m))
     }
-    if (is.null(TT)) TT <- dims[1L]
-    if (dims[1L] != TT) stop("All Xt groups must have the same time dimension T.")
-    if (any(!is.finite(x))) stop(sprintf("Xt group %d must contain only finite entries.", m))
+    if (is.null(TT)) {
+      TT <- dims[1L]
+    }
+    if (dims[1L] != TT) {
+      stop("All Xt groups must have the same time dimension T.")
+    }
+    if (any(!is.finite(x))) {
+      stop(sprintf("Xt group %d must contain only finite entries.", m))
+    }
     p[m] <- dims[2L]
     q[m] <- dims[3L]
   }
@@ -74,7 +84,9 @@
                    component, requirement, if (row_side) "row" else "column"))
     }
     values <- as.integer(values)
-    if (!global) names(values) <- data_info$group_names
+    if (!global) {
+      names(values) <- data_info$group_names
+    }
     ranks[[component]] <- values
   }
   for (pair in list(c("r1", "r2"), c("l1", "l2"), c("kr", "kr_m"), c("kc", "kc_m"))) {

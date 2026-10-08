@@ -91,6 +91,7 @@
     P_B <- diag(ncol(b_hat[[m]])) - tcrossprod(B1_hat[[m]])
     P_A2 <- P_A %*% A2_hat[[m]]
     P_B2 <- P_B %*% B2_hat[[m]]
+    # Global-space complements separate local main scores before temporal pooling.
     local_alpha_hat[[m]] <- t(.solve_gram(crossprod(A2_hat[[m]], P_A2), crossprod(P_A2, t(a_hat[[m]])), lambda))
     local_beta_hat[[m]] <- t(.solve_gram(crossprod(B2_hat[[m]], P_B2), crossprod(P_B2, t(b_hat[[m]])), lambda))
     y_hat[[m]] <- a_hat[[m]] - local_alpha_hat[[m]] %*% t(A2_hat[[m]])
@@ -116,7 +117,10 @@
   }
   list(main_effect = list(
     direct = moments$direct,
-    global = list(mu_hat = mu_hat, A1_hat = A1_hat, alpha_hat = alpha_hat, A1_tilde = A1_tilde, B1_hat = B1_hat, beta_hat = beta_hat, B1_tilde = B1_tilde),
+    global = list(
+      mu_hat = mu_hat, A1_hat = A1_hat, alpha_hat = alpha_hat, A1_tilde = A1_tilde,
+      B1_hat = B1_hat, beta_hat = beta_hat, B1_tilde = B1_tilde
+    ),
     local = list(mu_hat = local_mu_hat, A2_hat = A2_hat, alpha_hat = local_alpha_hat, B2_hat = B2_hat, beta_hat = local_beta_hat)
   ), check_Y = moments$check_Y)
 }

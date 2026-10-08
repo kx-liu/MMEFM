@@ -51,13 +51,21 @@ est_MMEFM <- function(
       stop(sprintf("%s must be one finite positive number.", name))
     }
   }
-  if (!is.numeric(lambda) || length(lambda) != 1L || !is.finite(lambda) || lambda < 0) stop("lambda must be one finite nonnegative number.")
-  if (!is.logical(verbose) || length(verbose) != 1L || is.na(verbose)) stop("verbose must be one nonmissing logical.")
-  if (is.null(rank)) rank <- select_MMEFM_rank(Xt, K0, max_iter, tol, seed, verbose)
+  if (!is.numeric(lambda) || length(lambda) != 1L || !is.finite(lambda) || lambda < 0) {
+    stop("lambda must be one finite nonnegative number.")
+  }
+  if (!is.logical(verbose) || length(verbose) != 1L || is.na(verbose)) {
+    stop("verbose must be one nonmissing logical.")
+  }
+  if (is.null(rank)) {
+    rank <- select_MMEFM_rank(Xt, K0, max_iter, tol, seed, verbose)
+  }
   ranks <- .validate_rank(rank, data_info)
   diagnostics <- if (inherits(rank, "mmefm_rank")) rank$diagnostics else NULL
   rank <- .new_mmefm_rank(ranks, diagnostics)
-  if (ranks$r1 > data_info$T || ranks$l1 > data_info$T) stop("Global main-effect ranks r1 and l1 must not exceed T.")
+  if (ranks$r1 > data_info$T || ranks$l1 > data_info$T) {
+    stop("Global main-effect ranks r1 and l1 must not exceed T.")
+  }
   if ((alignment_method == "VanLoan" || refit_method == "VanLoan") &&
       as.numeric(ranks$kr) * ranks$kc > data_info$T) {
     stop("VanLoan alignment or refitting requires kr * kc <= T.")
@@ -68,7 +76,9 @@ est_MMEFM <- function(
                                alignment_method, max_iter_procrustes, tol_procrustes,
                                refit_method, max_iter_als, tol_als, verbose))
   convergence <- common$convergence
-  if (!convergence$projection$converged) warning("Common-loading projection reached max_iter without convergence.", call. = FALSE)
+  if (!convergence$projection$converged) {
+    warning("Common-loading projection reached max_iter without convergence.", call. = FALSE)
+  }
   if (alignment_method == "Procrustes") {
     failed <- which(!convergence$procrustes$converged)
     failed <- setdiff(failed, common$common_component$alignment$reference_group)
@@ -78,7 +88,9 @@ est_MMEFM <- function(
               paste(groups, collapse = ", "), ".", call. = FALSE)
     }
   }
-  if (refit_method == "ALS" && !convergence$als$converged) warning("ALS refitting reached max_iter_als without convergence.", call. = FALSE)
+  if (refit_method == "ALS" && !convergence$als$converged) {
+    warning("ALS refitting reached max_iter_als without convergence.", call. = FALSE)
+  }
   structure(list(call = call, dimensions = data_info, rank = rank, main_effect = main$main_effect,
                  common_component = common$common_component, check_Y = main$check_Y, convergence = convergence),
             class = "mmefm_fit")
@@ -91,7 +103,8 @@ est_MMEFM <- function(
 #' @param ... Further arguments, currently unused.
 #' @return A list of T x p_m x q_m arrays preserving group names. Main components use the final structured estimator, not the raw direct moments. `check_Y` is not an additional fitted component.
 #' @export
-fitted.mmefm_fit <- function(object, component = c("all", "main", "global_main", "local_main", "global_common", "local_common"), ...) {
+fitted.mmefm_fit <- function(object, component = c("all", "main", "global_main", "local_main",
+  "global_common", "local_common"), ...) {
   component <- match.arg(component)
   dimensions <- object$dimensions
   result <- vector("list", dimensions$M)

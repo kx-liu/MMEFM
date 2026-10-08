@@ -1,7 +1,9 @@
 # A single PSD supplies local ratios; a list supplies indexwise global maxima.
 .paper_eigen_ratio <- function(S) {
   matrices <- if (is.matrix(S)) list(S) else S
-  if (!is.list(matrices) || !length(matrices)) stop("Provide a PSD matrix or a nonempty list of PSD matrices.")
+  if (!is.list(matrices) || !length(matrices)) {
+    stop("Provide a PSD matrix or a nonempty list of PSD matrices.")
+  }
   eigenvalues <- eigenvectors <- vector("list", length(matrices))
   names(eigenvalues) <- names(eigenvectors) <- names(matrices)
   for (m in seq_along(matrices)) {
@@ -14,15 +16,20 @@
     values <- decomposition$values
     # Backward error scales with matrix dimension and the spectrum, including at zero scale.
     negative_roundoff <- nrow(Sm) * .Machine$double.eps * max(abs(values))
-    if (any(values < -negative_roundoff)) stop("A rank-selection matrix is materially non-positive-semidefinite.")
+    if (any(values < -negative_roundoff)) {
+      stop("A rank-selection matrix is materially non-positive-semidefinite.")
+    }
     values[values < 0] <- 0
     eigenvalues[[m]] <- values
     eigenvectors[[m]] <- decomposition$vectors
   }
   d <- min(vapply(eigenvalues, length, integer(1L)))
   index <- seq_len(d - 1L)
+  # Pool eigenvalues indexwise across groups before taking consecutive ratios.
   pooled_eigenvalues <- numeric(d)
-  for (m in seq_along(matrices)) pooled_eigenvalues <- pmax(pooled_eigenvalues, eigenvalues[[m]][seq_len(d)])
+  for (m in seq_along(matrices)) {
+    pooled_eigenvalues <- pmax(pooled_eigenvalues, eigenvalues[[m]][seq_len(d)])
+  }
   ratios <- rep(Inf, d - 1L)
   positive <- pooled_eigenvalues[index] > 0
   ratios[positive] <- pooled_eigenvalues[index[positive] + 1L] / pooled_eigenvalues[index[positive]]
@@ -67,15 +74,22 @@ select_MMEFM_rank <- function(Xt, K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2
   K0 <- as.integer(K0)
   max_iter <- as.integer(max_iter)
   seed <- as.integer(seed)
-  if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol <= 0) stop("tol must be one finite positive number.")
-  if (!is.logical(verbose) || length(verbose) != 1L || is.na(verbose)) stop("verbose must be one nonmissing logical.")
+  if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol <= 0) {
+    stop("tol must be one finite positive number.")
+  }
+  if (!is.logical(verbose) || length(verbose) != 1L || is.na(verbose)) {
+    stop("verbose must be one nonmissing logical.")
+  }
 
+  # Cross-group main-effect moments identify the global loading spaces.
   moments <- .main_effect_moments(Xt)
   global_psd <- .main_effect_global_psd(moments$direct$a_hat, moments$direct$b_hat, data_info$T)
   r1_fit <- .paper_eigen_ratio(global_psd$row)
   l1_fit <- .paper_eigen_ratio(global_psd$column)
   A1_hat <- lapply(r1_fit$eigenvectors, function(V) V[, seq_len(r1_fit$rank), drop = FALSE])
   B1_hat <- lapply(l1_fit$eigenvectors, function(V) V[, seq_len(l1_fit$rank), drop = FALSE])
+
+  # Remove the global spaces before selecting group-local main-effect ranks.
   local_psd <- .main_effect_local_psd(moments$direct$a_hat, moments$direct$b_hat, A1_hat, B1_hat, data_info$T)
   r2_fit <- l2_fit <- kr_m_fit <- kc_m_fit <- vector("list", data_info$M)
   names(r2_fit) <- names(l2_fit) <- names(kr_m_fit) <- names(kc_m_fit) <- data_info$group_names
@@ -86,7 +100,11 @@ select_MMEFM_rank <- function(Xt, K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2
 
   common <- .with_preserved_seed(seed,
     .initial_common_loadings(moments$check_Y, K0 = K0, max_iter = max_iter, tol = tol, verbose = verbose))
-  if (!common$converged) warning("Rank-selection projection reached max_iter without convergence.", call. = FALSE)
+  if (!common$converged) {
+    warning("Rank-selection projection reached max_iter without convergence.", call. = FALSE)
+  }
+
+  # Project out global common spaces for each group-local common rank.
   for (m in seq_len(data_info$M)) {
     local_common <- .local_common_psd(moments$check_Y[[m]], common$Q_hat[[m]], common$J_hat[[m]])
     kr_m_fit[[m]] <- .paper_eigen_ratio(local_common$row)
@@ -98,6 +116,7 @@ select_MMEFM_rank <- function(Xt, K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2
                 kr = common$kr, kc = common$kc,
                 kr_m = vapply(kr_m_fit, function(fit) fit$rank, integer(1L)),
                 kc_m = vapply(kc_m_fit, function(fit) fit$rank, integer(1L)))
+  # Independently selected ranks must jointly fit the IC1-centered spaces.
   ranks <- .validate_rank(ranks, data_info)
   diagnostics <- list(r1 = r1_fit, l1 = l1_fit, r2 = r2_fit, l2 = l2_fit,
                       kr = common$row_rank_fit, kc = common$column_rank_fit, kr_m = kr_m_fit, kc_m = kc_m_fit)

@@ -48,7 +48,9 @@
       d <- q_m
     }
     projections[[m]] <- vector("list", length(pools[[m]]))
-    for (j in seq_along(pools[[m]])) projections[[m]][[j]] <- matrix(projected[, j, drop = FALSE], TT, d)
+    for (j in seq_along(pools[[m]])) {
+      projections[[m]][[j]] <- matrix(projected[, j, drop = FALSE], TT, d)
+    }
     selected_proj[[m]] <- projections[[m]][[1L]]
     directions[[m]] <- pools[[m]][[1L]]
   }
@@ -71,8 +73,11 @@
 }
 
 # Algorithm 1 updates automatic ranks inside the projection iteration; the caller owns the RNG seed.
-.initial_common_loadings <- function(check_Y, kr = NULL, kc = NULL, K0 = 20L, max_iter = 20L, tol = 1e-4, verbose = FALSE, initial_candidate_indices = NULL) {
-  if (is.null(kr) != is.null(kc)) stop("kr and kc must either both be supplied or both be NULL.")
+.initial_common_loadings <- function(check_Y, kr = NULL, kc = NULL, K0 = 20L, max_iter = 20L, tol = 1e-4,
+  verbose = FALSE, initial_candidate_indices = NULL) {
+  if (is.null(kr) != is.null(kc)) {
+    stop("kr and kc must either both be supplied or both be NULL.")
+  }
   automatic_rank <- is.null(kr)
   M <- length(check_Y)
   pools <- vector("list", M)
@@ -81,11 +86,13 @@
     pools[[m]] <- vector("list", K0)
     for (k in seq_len(K0)) {
       v <- matrix(0, q_m, 1L)
-      indices <- if (is.null(initial_candidate_indices)) sample(q_m, floor(q_m / 2)) else initial_candidate_indices[[m]][[k]]
+      indices <- if (is.null(initial_candidate_indices)) sample(q_m,
+        floor(q_m / 2)) else initial_candidate_indices[[m]][[k]]
       v[indices, 1L] <- 1
       pools[[m]][[k]] <- v / sqrt(sum(v^2))
     }
   }
+  # Algorithm 1 initializes row spaces from normalized half-panel directions.
   directions <- .select_common_directions(check_Y, pools, "row")
   row_psd <- .common_global_psd(check_Y, directions, "row")
   if (automatic_rank) {
@@ -97,7 +104,9 @@
   }
   for (m in seq_len(M)) {
     pools[[m]] <- vector("list", kr)
-    for (k in seq_len(kr)) pools[[m]][[k]] <- Q_hat[[m]][, k, drop = FALSE]
+    for (k in seq_len(kr)) {
+      pools[[m]][[k]] <- Q_hat[[m]][, k, drop = FALSE]
+    }
   }
   directions <- .select_common_directions(check_Y, pools, "column")
   column_psd <- .common_global_psd(check_Y, directions, "column")
@@ -118,7 +127,9 @@
     previous_rank <- c(kr, kc)
     for (m in seq_len(M)) {
       pools[[m]] <- vector("list", kr)
-      for (k in seq_len(kr)) pools[[m]][[k]] <- Q_hat[[m]][, k, drop = FALSE]
+      for (k in seq_len(kr)) {
+        pools[[m]][[k]] <- Q_hat[[m]][, k, drop = FALSE]
+      }
     }
     directions <- .select_common_directions(check_Y, pools, "column")
     column_psd <- .common_global_psd(check_Y, directions, "column")
@@ -131,7 +142,9 @@
     }
     for (m in seq_len(M)) {
       pools[[m]] <- vector("list", kc)
-      for (k in seq_len(kc)) pools[[m]][[k]] <- J_hat[[m]][, k, drop = FALSE]
+      for (k in seq_len(kc)) {
+        pools[[m]][[k]] <- J_hat[[m]][, k, drop = FALSE]
+      }
     }
     directions <- .select_common_directions(check_Y, pools, "row")
     row_psd <- .common_global_psd(check_Y, directions, "row")
@@ -142,12 +155,18 @@
     } else {
       Q_hat <- lapply(row_psd, .leading_eigenvectors, k = kr)
     }
+    # Compare spaces only when automatic ranks stayed unchanged.
     discrepancy <- Inf
     if (identical(c(kr, kc), previous_rank)) {
       discrepancy <- 0
-      for (m in seq_len(M)) discrepancy <- discrepancy + .subspace_distance(Q_hat[[m]], Q_old[[m]]) + .subspace_distance(J_hat[[m]], J_old[[m]])
+      for (m in seq_len(M)) {
+        discrepancy <- discrepancy + .subspace_distance(Q_hat[[m]], Q_old[[m]]) +
+          .subspace_distance(J_hat[[m]], J_old[[m]])
+      }
     }
-    if (verbose) cat(sprintf("projection iteration %d: discrepancy=%.5f\n", iter, discrepancy))
+    if (verbose) {
+      cat(sprintf("projection iteration %d: discrepancy=%.5f\n", iter, discrepancy))
+    }
     if (is.finite(discrepancy) && discrepancy < tol) {
       converged <- TRUE
       break

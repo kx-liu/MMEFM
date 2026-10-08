@@ -78,7 +78,9 @@
     }
     iterations <- iter
     relative_change <- abs(previous_objective - objective) / max(previous_objective, 1e-15)
-    if (verbose) cat(sprintf("ALS iteration %d: objective=%.6e, relative change=%.2e\n", iter, objective, relative_change))
+    if (verbose) {
+      cat(sprintf("ALS iteration %d: objective=%.6e, relative change=%.2e\n", iter, objective, relative_change))
+    }
     if (is.finite(relative_change) && relative_change < tol_als) {
       converged <- TRUE
       break

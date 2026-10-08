@@ -127,6 +127,8 @@ Do not use semicolons or multiple statements on one line.
 
 Do not hard-wrap prose or metadata at a fixed column width. Keep ordinary prose paragraphs on one line unless the file format requires continuation, the content has meaningful structural breaks, or a line break clearly improves readability. Apply the same principle to roxygen prose and short R expressions: do not mechanically split short function calls, assignments, conditions, or expressions across lines. Lists, formulas, tables, long function signatures, and genuinely complex expressions may use multiple lines when useful.
 
+Use approximately 100–120 characters as a soft guideline for ordinary R code, with semantic line breaks and two-space indentation. Use braces instead of compressed control flow in nontrivial validation, computation, iteration, and error handling. Comments should clarify statistical intent or non-obvious choices; avoid redundant narration and helpers created only for cosmetic decomposition.
+
 Use `seq_len()` and `seq_along()` instead of constructions such as `1:n` when
 zero-length cases are possible.
 
