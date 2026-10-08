@@ -51,7 +51,7 @@
 #'
 #' The additional `diagnostics` field has exactly the same eight rank names. Global entries contain `eigenvalues` (group spectra), `pooled_eigenvalues` (indexwise spectral maxima), and `ratios`. Local entries are group lists containing only ordinary `eigenvalues` and `ratios` vectors. Selected ranks, eigenvectors, and iteration traces are omitted.
 #'
-#' Global and local rank pairs must together fit each group's corresponding row or column dimension; equality is allowed. Infeasible automatic selections error without capping or modifying ranks.
+#' Under IC1, global/local row rank sums `r1 + r2[m]` and `kr + kr_m[m]` must be at most `p_m - 1`; column sums `l1 + l2[m]` and `kc + kc_m[m]` must be at most `q_m - 1`. Equality at these centered-subspace dimensions is allowed. Infeasible automatic selections error without capping or modifying ranks.
 #' @export
 select_MMEFM_rank <- function(Xt, K0 = 20L, max_iter = 20L, tol = 1e-4, seed = 2026L, verbose = FALSE) {
   data_info <- .validate_Xt(Xt)

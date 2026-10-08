@@ -81,10 +81,10 @@
     row_side <- pair[1L] %in% c("r1", "kr")
     dimensions <- if (row_side) data_info$p else data_info$q
     total <- as.numeric(ranks[[pair[1L]]]) + ranks[[pair[2L]]]
-    invalid <- which(total > dimensions)
+    invalid <- which(total > dimensions - 1L)
     if (length(invalid)) {
       groups <- if (is.null(data_info$group_names)) invalid else data_info$group_names[invalid]
-      stop(sprintf("rank$%s + rank$%s must not exceed the %s dimension in group(s): %s.",
+      stop(sprintf("rank$%s + rank$%s must not exceed the available centered %s dimension (dimension minus one under IC1) in group(s): %s.",
                    pair[1L], pair[2L], if (row_side) "row" else "column", paste(groups, collapse = ", ")))
     }
   }

@@ -226,6 +226,7 @@ test_that("rectangular multi-rank cores and score matrices retain their shapes",
   args <- .generator_args()
   args$rank$r1 <- args$rank$l1 <- args$rank$kr <- 2L
   args$rank$kc <- 3L
+  args$q["c"] <- 5L
   args$rank$kr_m <- c(1L, 2L, 1L)
   args$store_components <- TRUE
   x <- do.call(gen_MMEFM, args)
@@ -236,5 +237,38 @@ test_that("rectangular multi-rank cores and score matrices retain their shapes",
   for (m in seq_len(3L)) {
     expect_equal(Reduce(`+`, lapply(x$components, function(a) a[[m]])), x$Xt[[m]], tolerance = 1e-13)
     expect_equal(crossprod(x$main_effect$global$alpha, x$main_effect$local$alpha[[m]]), matrix(0, 2L, 1L), tolerance = 1e-12)
+  }
+})
+
+
+test_that("maximum centered spatial ranks and the temporal boundary are usable", {
+  p <- c(a = 4L, b = 5L, c = 6L)
+  q <- c(a = 5L, b = 6L, c = 4L)
+  rank <- list(r1 = 2L, l1 = 2L, r2 = c(a = 1L, b = 2L, c = 3L), l2 = c(a = 2L, b = 3L, c = 1L),
+               kr = 2L, kc = 2L, kr_m = c(a = 1L, b = 2L, c = 3L), kc_m = c(a = 2L, b = 3L, c = 1L))
+  x <- gen_MMEFM(5L, p, q, rank, burn = 4L, filter_length = 8L, seed = 2026L, store_components = TRUE)
+  expect_identical(.validate_rank(x$rank, x$dimensions), rank)
+  expect_identical(rank$r1 + rank$r2, p - 1L)
+  expect_identical(rank$kr + rank$kr_m, p - 1L)
+  expect_identical(rank$l1 + rank$l2, q - 1L)
+  expect_identical(rank$kc + rank$kc_m, q - 1L)
+  global <- x$main_effect$global
+  local <- x$main_effect$local
+  for (m in seq_along(p)) {
+    expect_identical(dim(x$Xt[[m]]), c(5L, unname(p[m]), unname(q[m])))
+    expect_true(all(is.finite(x$Xt[[m]])))
+    expect_equal(Reduce(`+`, lapply(x$components, function(values) values[[m]])), x$Xt[[m]], tolerance = 1e-13)
+    loadings <- list(cbind(global$A1[[m]], local$A2[[m]]), cbind(global$B1[[m]], local$B2[[m]]),
+                     cbind(x$common_component$global$Q[[m]], x$common_component$local$R[[m]]),
+                     cbind(x$common_component$global$J[[m]], x$common_component$local$C[[m]]))
+    dimensions <- c(p[m], q[m], p[m], q[m])
+    for (i in seq_along(loadings)) {
+      expect_equal(colMeans(loadings[[i]]), rep(0, ncol(loadings[[i]])), tolerance = 1e-14)
+      expect_identical(qr(loadings[[i]])$rank, unname(dimensions[i] - 1L))
+    }
+    expect_equal(crossprod(global$alpha, local$alpha[[m]]), matrix(0, rank$r1, rank$r2[m]), tolerance = 1e-12)
+    expect_equal(crossprod(global$beta, local$beta[[m]]), matrix(0, rank$l1, rank$l2[m]), tolerance = 1e-12)
+    expect_identical(qr(cbind(global$alpha, local$alpha[[m]]))$rank, unname(rank$r1 + rank$r2[m]))
+    expect_identical(qr(cbind(global$beta, local$beta[[m]]))$rank, unname(rank$l1 + rank$l2[m]))
   }
 })

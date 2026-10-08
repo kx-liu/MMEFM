@@ -44,7 +44,7 @@ test_that("Xt requires finite entries and unambiguous group names", {
 })
 
 test_that("complete ranks are canonical integers in Xt group order", {
-  data_info <- .validate_Xt(list(a = array(0, c(1, 3, 5)), b = array(0, c(1, 5, 4))))
+  data_info <- .validate_Xt(list(a = array(0, c(1, 4, 6)), b = array(0, c(1, 6, 5))))
   rank <- list(r1 = 1, l1 = 2, r2 = c(2, 4), l2 = c(3, 2),
                kr = 2, kc = 1, kr_m = c(1, 3), kc_m = c(2, 1))
   expected <- list(r1 = 1L, l1 = 2L, r2 = c(a = 2L, b = 4L), l2 = c(a = 3L, b = 2L),
@@ -56,7 +56,7 @@ test_that("complete ranks are canonical integers in Xt group order", {
   expect_identical(.validate_rank(rank, data_info), expected)
   expect_identical(.validate_rank(rank[rev(names(rank))], data_info), expected)
 
-  unnamed_info <- .validate_Xt(list(array(0, c(1, 3, 5)), array(0, c(1, 5, 4))))
+  unnamed_info <- .validate_Xt(list(array(0, c(1, 4, 6)), array(0, c(1, 6, 5))))
   # Names cannot override position when Xt itself has no names.
   positional <- list(r1 = 1L, l1 = 1L, r2 = c(b = 2L, a = 4L), l2 = c(b = 3L, a = 2L),
                      kr = 1L, kc = 1L, kr_m = c(b = 2L, a = 4L), kc_m = c(b = 3L, a = 2L))
@@ -205,15 +205,19 @@ test_that("a rank object's class does not bypass structural or value validation"
 })
 
 
-test_that("combined global/local ranks allow equality but reject incompatible pairs", {
-  data_info <- .validate_Xt(list(a = array(0, c(2L, 4L, 4L)), b = array(0, c(2L, 5L, 5L))))
-  ranks <- list(r1 = 2L, l1 = 2L, r2 = c(2L, 3L), l2 = c(2L, 3L),
-                kr = 2L, kc = 2L, kr_m = c(2L, 3L), kc_m = c(2L, 3L))
+test_that("combined ranks attain centered dimensions and reject full spatial dimensions", {
+  data_info <- .validate_Xt(list(a = array(0, c(2L, 4L, 5L)), b = array(0, c(2L, 5L, 6L))))
+  ranks <- list(r1 = 2L, l1 = 2L, r2 = c(1L, 2L), l2 = c(2L, 3L),
+                kr = 2L, kc = 2L, kr_m = c(1L, 2L), kc_m = c(2L, 3L))
   canonical <- .validate_rank(ranks, data_info)
-  expect_identical(canonical$r2, c(a = 2L, b = 3L))
   for (pair in list(c("r1", "r2"), c("l1", "l2"), c("kr", "kr_m"), c("kc", "kc_m"))) {
-    invalid <- ranks
-    invalid[[pair[2L]]][1L] <- 3L
-    expect_error(.validate_rank(invalid, data_info), paste0(pair[1L], " .*", pair[2L], ".*", if (pair[1L] %in% c("r1", "kr")) "row" else "column", ".*a"))
+    row_side <- pair[1L] %in% c("r1", "kr")
+    dimensions <- if (row_side) data_info$p else data_info$q
+    expect_identical(canonical[[pair[1L]]] + canonical[[pair[2L]]], dimensions - 1L)
+    for (extra in 1:2) {
+      invalid <- ranks
+      invalid[[pair[2L]]][2L] <- invalid[[pair[2L]]][2L] + extra
+      expect_error(.validate_rank(invalid, data_info), paste0(pair[1L], " .*", pair[2L], ".*centered ", if (row_side) "row" else "column", ".*IC1.*b"))
+    }
   }
 })

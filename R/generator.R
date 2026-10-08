@@ -117,7 +117,7 @@
 #' Generate canonical group arrays and nested statistical truth using the manuscript's finite-sample numerical DGP.
 #' @param T Positive whole-number time dimension within R's integer range.
 #' @param p,q Whole-number row and column dimension vectors, each at least two, with the same length M >= 2. Both must be unnamed or have unique nonempty matching group names; q is reordered to p order.
-#' @param rank Complete canonical eight-field rank list or `mmefm_rank`; see [est_MMEFM()]. Positive nominal model ranks and spatial combined-rank constraints apply. Supplied diagnostics are discarded. Each global/local main-score rank sum must also be at most T; equality is allowed.
+#' @param rank Complete canonical eight-field rank list or `mmefm_rank`; see [est_MMEFM()]. Positive nominal model ranks apply. All model loadings are centered under IC1, so `r1 + r2[m]` and `kr + kr_m[m]` must be at most `p_m - 1`, and `l1 + l2[m]` and `kc + kc_m[m]` at most `q_m - 1`; equality at these centered dimensions is allowed. Supplied diagnostics are discarded. Each global/local main-score rank sum must also be at most T; equality is allowed.
 #' @param main_strength_global Length-two row/column main-loading strengths in (0.5, 1].
 #' @param main_strength_local NULL to repeat global strengths, or a group list of length-two strengths.
 #' @param common_strength_global,common_strength_local NULL for unit strengths, or exactly `list(row = ..., column = ...)`, each a group list. Entries are scalar or one strength per corresponding loading column, in (0.5, 1]. Named group lists are matched to p order; unnamed lists are positional.

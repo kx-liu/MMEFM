@@ -24,7 +24,7 @@ est_MMEFM(
 \arguments{
 \item{Xt}{A list of at least two finite numeric arrays with dimensions \verb{T x p_m x q_m}. All groups share \code{T >= 1}; row and column dimensions may differ between groups and must each be at least two. Group names are optional but must be nonempty and unique when supplied.}
 
-\item{rank}{NULL for automatic rank selection, a complete named list with \code{r1}, \code{l1}, \code{r2}, \code{l2}, \code{kr}, \code{kc}, \code{kr_m}, and \code{kc_m}, or an \code{mmefm_rank} object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local ranks are reordered to named \code{Xt} groups. Each rank is smaller than its corresponding spatial dimension, and each global/local rank pair must sum to at most that dimension; equality is allowed.}
+\item{rank}{NULL for automatic rank selection, a complete named list with \code{r1}, \code{l1}, \code{r2}, \code{l2}, \code{kr}, \code{kc}, \code{kr_m}, and \code{kc_m}, or an \code{mmefm_rank} object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local ranks are reordered to named \code{Xt} groups. Each rank is smaller than its corresponding spatial dimension, and under IC1, \code{r1 + r2[m]} and \code{kr + kr_m[m]} must be at most \code{p_m - 1}, while \code{l1 + l2[m]} and \code{kc + kc_m[m]} must be at most \code{q_m - 1}. Equality at dimension minus one is allowed.}
 
 \item{K0}{Positive whole number of random half-panel column directions per group used to initialize Algorithm 1. Defaults to 20.}
 

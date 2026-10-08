@@ -1,8 +1,5 @@
 .rank_selection_fixture <- function() {
-  set.seed(917L)
-  list(a = array(rnorm(12L * 2L * 2L), c(12L, 2L, 2L)),
-       b = array(rnorm(12L * 2L * 2L), c(12L, 2L, 2L)),
-       c = array(rnorm(12L * 2L * 2L), c(12L, 2L, 2L)))
+  .fit_fixture(rep(3L, 3L), rep(3L, 3L), c(1, 1, -2), c(1, -1, 0))$Xt
 }
 
 # Minimum dimensions leave the true elbow as the last available ratio; no numerical perturbation is needed.

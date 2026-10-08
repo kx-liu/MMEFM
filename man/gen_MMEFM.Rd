@@ -33,7 +33,7 @@ gen_MMEFM(
 
 \item{p, q}{Whole-number row and column dimension vectors, each at least two, with the same length M >= 2. Both must be unnamed or have unique nonempty matching group names; q is reordered to p order.}
 
-\item{rank}{Complete canonical eight-field rank list or \code{mmefm_rank}; see \code{\link[=est_MMEFM]{est_MMEFM()}}. Positive nominal model ranks and spatial combined-rank constraints apply. Supplied diagnostics are discarded. Each global/local main-score rank sum must also be at most T; equality is allowed.}
+\item{rank}{Complete canonical eight-field rank list or \code{mmefm_rank}; see \code{\link[=est_MMEFM]{est_MMEFM()}}. Positive nominal model ranks apply. All model loadings are centered under IC1, so \code{r1 + r2[m]} and \code{kr + kr_m[m]} must be at most \code{p_m - 1}, and \code{l1 + l2[m]} and \code{kc + kc_m[m]} at most \code{q_m - 1}; equality at these centered dimensions is allowed. Supplied diagnostics are discarded. Each global/local main-score rank sum must also be at most T; equality is allowed.}
 
 \item{main_strength_global}{Length-two row/column main-loading strengths in (0.5, 1].}
 

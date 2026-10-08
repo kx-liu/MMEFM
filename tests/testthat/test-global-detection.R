@@ -112,7 +112,7 @@ test_that("raw and fit inputs share standardized re-estimation and exact contrac
 })
 
 test_that("automatic ranks and supplied ranks give identical detection", {
-  x <- .fit_fixture(rep(3L, 3L), rep(3L, 3L), c(1, 1, -2), c(1, 0, -1))
+  x <- .fit_fixture(rep(3L, 3L), rep(3L, 3L), c(1, 1, -2), c(1, -1, 0))
   rank <- select_MMEFM_rank(x$Xt, K0 = 8L)
   explicit <- detect_MMEFM_global(x$Xt, rank, B = 3L, K0 = 8L)
   automatic <- detect_MMEFM_global(x$Xt, B = 3L, K0 = 8L)
@@ -191,7 +191,7 @@ test_that("detection printing is compact and invisible", {
 })
 
 test_that("strict cutoff ties give an empty screen with singleton time and unnamed groups", {
-  Y <- rep(list(array(c(1, -1, -1, 1), c(1L, 2L, 2L))), 3L)
+  Y <- rep(list(array(tcrossprod(c(1, -1, 0)), c(1L, 3L, 3L))), 3L)
   rank <- list(r1 = 1L, l1 = 1L, r2 = rep(1L, 3L), l2 = rep(1L, 3L), kr = 1L, kc = 1L, kr_m = rep(1L, 3L), kc_m = rep(1L, 3L))
   result <- detect_MMEFM_global(Y, rank, B = 3L, K0 = 2L)
   expect_equal(result$second_largest, result$cutoff, tolerance = 1e-14)

@@ -2,7 +2,7 @@
 #'
 #' Fits global and local main effects and common matrix-factor components at complete positive ranks.
 #' @inheritParams select_MMEFM_rank
-#' @param rank NULL for automatic rank selection, a complete named list with `r1`, `l1`, `r2`, `l2`, `kr`, `kc`, `kr_m`, and `kc_m`, or an `mmefm_rank` object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local ranks are reordered to named `Xt` groups. Each rank is smaller than its corresponding spatial dimension, and each global/local rank pair must sum to at most that dimension; equality is allowed.
+#' @param rank NULL for automatic rank selection, a complete named list with `r1`, `l1`, `r2`, `l2`, `kr`, `kc`, `kr_m`, and `kc_m`, or an `mmefm_rank` object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local ranks are reordered to named `Xt` groups. Each rank is smaller than its corresponding spatial dimension, and under IC1, `r1 + r2[m]` and `kr + kr_m[m]` must be at most `p_m - 1`, while `l1 + l2[m]` and `kc + kc_m[m]` must be at most `q_m - 1`. Equality at dimension minus one is allowed.
 #' @param alignment_method Global common-coordinate alignment: `"VanLoan"` (default) or `"Procrustes"`.
 #' @param max_iter_procrustes Positive whole-number integer-range limit for Procrustes alignment iterations.
 #' @param tol_procrustes Finite positive relative-objective tolerance for Procrustes alignment.

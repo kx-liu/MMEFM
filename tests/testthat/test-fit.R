@@ -39,7 +39,7 @@ test_that("complete fits reconstruct all identified components", {
 })
 
 test_that("automatic and explicit ranks use the same final estimation path", {
-  x <- .fit_fixture(rep(3L, 3L), rep(3L, 3L), c(1, 1, -2), c(1, 0, -1))
+  x <- .fit_fixture(rep(3L, 3L), rep(3L, 3L), c(1, 1, -2), c(1, -1, 0))
   rank <- select_MMEFM_rank(x$Xt, K0 = 8L, seed = 2026L)
   explicit <- est_MMEFM(x$Xt, rank, K0 = 8L, seed = 2026L)
   automatic <- est_MMEFM(x$Xt, K0 = 8L, seed = 2026L)
@@ -117,7 +117,7 @@ test_that("iteration limits warn once for each active stage", {
     expect_length(messages, 1L)
     expect_match(messages, patterns[i])
   }
-  a <- .fit_fixture(rep(3L, 3L), rep(3L, 3L), c(1, 1, -2), c(1, 0, -1))
+  a <- .fit_fixture(rep(3L, 3L), rep(3L, 3L), c(1, 1, -2), c(1, -1, 0))
   messages <- character()
   withCallingHandlers(select_MMEFM_rank(a$Xt, K0 = 8L, max_iter = 1L, tol = 1e-20), warning = function(w) {
     messages <<- c(messages, conditionMessage(w))
