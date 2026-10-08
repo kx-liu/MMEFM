@@ -13,6 +13,8 @@ library(MMEFM)
 
 ## Data structure and model components
 
+The accompanying manuscript is *Multilevel Main Effects Matrix Factor Model* by Kaixin Liu, Clifford Lam, and Zetai Cen. Under its theoretical conditions, global and local main effects may be nonstationary while their effects at individual time points remain consistently estimable.
+
 MMEFM models several matrix-valued time series while separating shared variation from group-specific variation. The input `Xt` is a list of at least two finite numeric arrays. Group m has dimensions `T x p_m x q_m`, with time first, rows second, and columns third. All groups share T; spatial dimensions may differ. Names are optional, but supplied group names must be nonempty and unique.
 
 For group m, the model separates a global and local grand mean, global and local row main effects, global and local column main effects, and global and local matrix-factor interactions:
@@ -44,7 +46,7 @@ lapply(Xt, dim)
 
 This example uses Gaussian innovations and the default zero-memory specifications with short-memory dynamics. The generator also supports raw Student-t innovations, general piecewise-memory specifications, and `store_components = TRUE` for storing all signal and error components. Raw Student-t draws are not variance-standardized; simulation permits degrees of freedom that need not satisfy theoretical moment assumptions.
 
-For detection experiments, `active_global` can restrict global common interactions to zero or at least two groups. It zeroes inactive global common loadings without changing the nominal positive ranks or the global factor series. The finite-sample generator does not enforce every asymptotic error regularity condition; see `?gen_MMEFM` for its numerical-DGP conventions.
+For detection experiments, `active_global` can restrict global common interactions to zero or at least two groups. It zeroes inactive global common loadings without changing the nominal positive ranks or the global factor series.
 
 ## Rank specification and feasibility
 

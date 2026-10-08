@@ -1,6 +1,6 @@
 # MMEFM
 
-MMEFM fits the Multilevel Main Effects Matrix Factor Model to multiple matrix-valued time series. It preserves matrix structure while separating shared and group-specific effects: global and local grand means, row main effects, column main effects, and matrix-factor interactions.
+MMEFM fits the Multilevel Main Effects Matrix Factor Model to multiple matrix-valued time series. It preserves matrix structure while separating shared and group-specific effects: global and local grand means, row main effects, column main effects, and matrix-factor interactions. The model allows nonstationary main effects whose time-specific values can still be consistently estimated under the manuscript's theoretical conditions.
 
 ## Installation
 
@@ -49,6 +49,12 @@ Use `?gen_MMEFM`, `?select_MMEFM_rank`, `?est_MMEFM`, and `?detect_MMEFM_global`
 `Xt` is a list of finite numeric arrays with dimensions `T x p_m x q_m`: groups share T but may have different row and column dimensions. Model ranks are currently positive. Under IC1 centering, each global/local row rank sum is at most `p_m - 1`, and each column sum is at most `q_m - 1`; equality is allowed. Invalid ranks and singular unregularized numerical systems raise errors without silent repair.
 
 Simulation ownership (`active_global`) determines which groups carry global common interactions; it does not change nominal positive global ranks. Whole-sample circular-shift detection assumes a stationary segment and is not justified for arbitrary nonstationary piecewise series merely because the generator supports them.
+
+## Accompanying manuscript
+
+The methodology implemented in MMEFM is developed in:
+
+Kaixin Liu, Clifford Lam, and Zetai Cen. *Multilevel Main Effects Matrix Factor Model*. Manuscript.
 
 ## Development status and license
 
