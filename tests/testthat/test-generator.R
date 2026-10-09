@@ -75,15 +75,14 @@ test_that("stored components recover Xt and structured errors independently", {
     epsilon <- sweep(x$Xt[[m]] - Reduce(`+`, other_terms), c(2L, 3L), x$error$sigma[[m]], "/")
     expect_equal(sweep(epsilon, c(2L, 3L), x$error$sigma[[m]], "*"), x$components$error_idiosyncratic[[m]], tolerance = 1e-12)
   }
-  args$error_rank_global <- c(0L, 2L)
-  args$error_rank_local <- list(c(1L, 0L), c(0L, 0L), c(0L, 2L))
+  args$error_rank <- list(ker = 0L, kec = 2L, ker_m = c(1L, 0L, 0L), kec_m = c(0L, 0L, 2L))
   zero <- do.call(gen_MMEFM, args)
   expect_identical(dim(zero$error$global$G), c(8L, 0L, 2L))
   expect_identical(dim(zero$error$global$Q$a), c(4L, 0L))
   for (m in seq_len(3L)) {
     expect_true(all(zero$components$error_global[[m]] == 0))
     expect_true(all(zero$components$error_local[[m]] == 0))
-    expect_identical(dim(zero$error$local$F[[m]]), c(8L, args$error_rank_local[[m]]))
+    expect_identical(dim(zero$error$local$F[[m]]), c(8L, args$error_rank$ker_m[m], args$error_rank$kec_m[m]))
   }
 })
 
@@ -121,9 +120,9 @@ test_that("ownership mutation preserves the full draw order", {
 test_that("strength expansion and named memory specifications are canonical", {
   args <- .generator_args()
   args$rank$kr <- 2L
-  args$common_strength_global <- list(row = list(c = 0.8, b = c(0.7, 0.9), a = 0.8), column = rep(list(1), 3L))
+  args$strength <- list(common_global = list(list(0.8, 1), list(c(0.7, 0.9), 1), list(0.8, 1)))
   scalar <- do.call(gen_MMEFM, args)
-  args$common_strength_global$row <- list(c = c(0.8, 0.8), b = c(0.7, 0.9), a = c(0.8, 0.8))
+  args$strength$common_global <- list(list(c(0.8, 0.8), 1), list(c(0.7, 0.9), 1), list(c(0.8, 0.8), 1))
   expect_identical(do.call(gen_MMEFM, args), scalar)
   args$memory <- list(mu_global = c(0.1, -0.1, 0), mu_local = c(0, 0),
                       alpha = list(global = list(d = 0.2, seg_lens = 8L), local = list(c = 0, b = c(0, 0.1), a = -0.1)),
@@ -198,10 +197,8 @@ test_that("generator preserves RNG after success and stochastic error", {
 
 test_that("generator controls reject invalid dimensions and specifications", {
   args <- .generator_args()
-  invalid <- list(T = 1.5, p = c(1, 4, 5), q = c(4, 5), main_strength_global = c(0.5, 1),
-                  main_strength_local = list(c(1, 2)), common_strength_global = list(row = rep(list(0.4), 3L), column = rep(list(1), 3L)),
-                  common_strength_local = list(row = list(1)), phi = 1, error_phi = Inf,
-                  error_rank_global = c(-1, 2), error_rank_local = rep(list(c(1.5, 2)), 3L),
+  invalid <- list(T = 1.5, p = c(1, 4, 5), q = c(4, 5), strength = list(main_global = c(0.5, 1)), phi = 1, error_phi = Inf,
+                  error_rank = list(ker = -1),
                   error_loading_zero_prob = 1, innovation = "other", df = 0, burn = -1,
                   filter_length = 1.5, active_global = c(1, 1), seed = NA_real_, store_components = NA)
   for (name in names(invalid)) {
@@ -365,9 +362,153 @@ test_that("stable AR(p) drives latent and error components without changing cont
     }
   }
   args$memory <- NULL
-  args$error_rank_global <- c(0L, 0L)
-  args$error_rank_local <- rep(list(c(0L, 0L)), 3L)
+  args$error_rank <- list(ker = 0L, kec = 0L, ker_m = rep(0L, 3L), kec_m = rep(0L, 3L))
   zero_nuisance <- do.call(gen_MMEFM, args)
   expect_identical(dim(zero_nuisance$error$global$G), c(8L, 0L, 0L))
   expect_true(all(is.finite(unlist(zero_nuisance$Xt))))
+})
+
+test_that("strength defaults are independent and positional", {
+  args <- .generator_args()
+  baseline <- do.call(gen_MMEFM, args)
+  args$strength <- list()
+  expect_identical(do.call(gen_MMEFM, args), baseline)
+  args$strength <- list(main_global = NULL, main_local = NULL, common_global = NULL, common_local = NULL)
+  expect_identical(do.call(gen_MMEFM, args), baseline)
+  args$strength <- list(main_global = c(0.8, 0.9))
+  changed <- do.call(gen_MMEFM, args)
+  expect_identical(changed$main_effect$local, baseline$main_effect$local)
+  expect_identical(changed$common_component, baseline$common_component)
+  expect_identical(changed$error, baseline$error)
+  for (m in seq_along(args$p)) {
+    expect_equal(changed$main_effect$global$A1[[m]], baseline$main_effect$global$A1[[m]] * args$p[m]^(-0.1))
+    expect_equal(changed$main_effect$global$B1[[m]], baseline$main_effect$global$B1[[m]] * baseline$dimensions$q[m]^(-0.05))
+  }
+  args$strength <- list(main_local = list(c(0.8, 1), c(1, 0.9), c(0.9, 0.95)))
+  local <- do.call(gen_MMEFM, args)
+  expect_identical(local$main_effect$global, baseline$main_effect$global)
+  for (m in seq_along(args$p)) {
+    xi <- args$strength$main_local[[m]]
+    expect_equal(local$main_effect$local$A2[[m]], baseline$main_effect$local$A2[[m]] * args$p[m]^(-(1 - xi[1L]) / 2))
+    expect_equal(local$main_effect$local$B2[[m]], baseline$main_effect$local$B2[[m]] * baseline$dimensions$q[m]^(-(1 - xi[2L]) / 2))
+  }
+  args$q <- args$q[3:1]
+  expect_identical(do.call(gen_MMEFM, args), local)
+})
+
+test_that("common strengths use group-first row-first column-specific scaling", {
+  args <- .generator_args()
+  args$p <- c(a = 5L, b = 6L, c = 7L)
+  args$q <- c(a = 6L, b = 7L, c = 5L)
+  args$rank$kr <- args$rank$kc <- 2L
+  args$rank$kr_m <- c(1L, 2L, 1L)
+  args$rank$kc_m <- c(2L, 1L, 2L)
+  baseline <- do.call(gen_MMEFM, args)
+  args$strength <- list(
+    common_global = list(list(c(0.7, 0.9), c(1, 0.8)), list(c(0.8, 1), c(0.9, 1)), list(c(0.9, 0.9), c(0.75, 1))),
+    common_local = list(list(0.7, c(0.9, 1)), list(c(0.7, 0.95), 0.9), list(1, c(0.8, 0.95))))
+  x <- do.call(gen_MMEFM, args)
+  expect_identical(x$main_effect, baseline$main_effect)
+  expect_identical(x$error, baseline$error)
+  for (scope in c("global", "local")) {
+    sides <- if (scope == "global") c("Q", "J") else c("R", "C")
+    for (m in seq_along(args$p)) {
+      for (side in seq_len(2L)) {
+        xi <- args$strength[[paste0("common_", scope)]][[m]][[side]]
+        loading <- baseline$common_component[[scope]][[sides[side]]][[m]]
+        if (length(xi) == 1L) xi <- rep(xi, ncol(loading))
+        n <- if (side == 1L) args$p[m] else args$q[m]
+        expect_equal(x$common_component[[scope]][[sides[side]]][[m]],
+                     sweep(loading, 2L, n^(-(1 - xi) / 2), "*"))
+      }
+    }
+  }
+  expanded <- args
+  expanded$strength$common_local[[1L]][[1L]] <- rep(0.7, args$rank$kr_m[1L])
+  expanded$strength$common_local[[2L]][[2L]] <- rep(0.9, args$rank$kc_m[2L])
+  expanded$strength$common_global[[3L]][[1L]] <- 0.9
+  expect_identical(do.call(gen_MMEFM, expanded), x)
+})
+
+test_that("strength validation rejects names, malformed nesting, and invalid values", {
+  args <- .generator_args()
+  invalid <- list(1, list(1), list(unknown = 1), list(main_global = c(1, 1), main_global = c(1, 1)),
+    setNames(list(c(1, 1)), NA_character_), setNames(list(c(1, 1)), ""),
+    list(main_global = c(row = 1, column = 1)), list(main_global = matrix(1, 1L, 2L)),
+    list(main_global = 1), list(main_local = list(c(1, 1))),
+    list(main_local = structure(rep(list(c(1, 1)), 3L), dim = 3L)),
+    list(common_local = rep(list(structure(list(1, 1), dim = 2L)), 3L)),
+    list(main_local = list(a = c(1, 1), b = c(1, 1), c = c(1, 1))),
+    list(main_local = list(c(row = 1, column = 1), c(1, 1), c(1, 1))),
+    list(common_global = list(list(1), list(1, 1), list(1, 1))),
+    list(common_local = list(list(1, 1, 1), list(1, 1), list(1, 1))),
+    list(common_global = list(list(row = 1, column = 1), list(1, 1), list(1, 1))),
+    list(common_global = list(a = list(1, 1), b = list(1, 1), c = list(1, 1))),
+    list(common_local = list(list(c(a = 1), 1), list(1, 1), list(1, 1))),
+    list(common_global = list(list(c(0.8, 0.9), 1), list(1, 1), list(1, 1))))
+  for (strength in invalid) {
+    args$strength <- strength
+    expect_error(do.call(gen_MMEFM, args), "strength")
+  }
+  for (value in c(0.5, 0.4, 1.1, NA_real_, Inf, -Inf)) {
+    for (field in c("main_global", "main_local", "common_global", "common_local")) {
+      entry <- switch(field, main_global = c(value, 1), main_local = rep(list(c(value, 1)), 3L),
+                      rep(list(list(value, 1)), 3L))
+      args$strength <- setNames(list(entry), field)
+      expect_error(do.call(gen_MMEFM, args), paste0("strength\\$", field))
+    }
+  }
+  args$strength <- list(main_global = c(0.5001, 1))
+  expect_no_warning(do.call(gen_MMEFM, args))
+  args$strength <- list(common_local = list(list(1, numeric()), list(1, 1), list(1, 1)))
+  expect_error(do.call(gen_MMEFM, args), "common_local.*1.*column")
+})
+
+test_that("error ranks default independently and match canonical group order", {
+  args <- .generator_args()
+  baseline <- do.call(gen_MMEFM, args)
+  args$error_rank <- list()
+  expect_identical(do.call(gen_MMEFM, args), baseline)
+  args$error_rank <- list(ker = 2L, kec = 2L, ker_m = rep(2L, 3L), kec_m = rep(2L, 3L))
+  expect_identical(do.call(gen_MMEFM, args), baseline)
+  args$error_rank <- list(ker_m = c(1L, 2L, 0L), kec_m = c(2L, 1L, 0L))
+  partial <- do.call(gen_MMEFM, args)
+  expect_identical(dim(partial$error$global$G), c(8L, 2L, 2L))
+  for (m in seq_along(args$p)) {
+    expect_identical(dim(partial$error$local$F[[m]]),
+                     c(8L, args$error_rank$ker_m[m], args$error_rank$kec_m[m]))
+  }
+  args$error_rank <- list(ker = 2, kec = 2, ker_m = c(c = 0, a = 1, b = 2), kec_m = c(b = 1, c = 0, a = 2))
+  expect_identical(do.call(gen_MMEFM, args), partial)
+  args$error_rank <- list(ker = 1L)
+  x <- do.call(gen_MMEFM, args)
+  expect_identical(dim(x$error$global$G), c(8L, 1L, 2L))
+  expect_identical(dim(x$error$local$F$a), c(8L, 2L, 2L))
+  args$error_rank <- list(ker = min(args$p), kec = min(args$q), ker_m = unname(args$p), kec_m = unname(args$q[names(args$p)]))
+  expect_no_warning(do.call(gen_MMEFM, args))
+  args$p <- unname(args$p)
+  args$q <- unname(args$q)
+  args$error_rank <- list(ker_m = c(c = 1L, b = 2L, a = 0L))
+  expect_identical(dim(do.call(gen_MMEFM, args)$error$local$F[[1L]]), c(8L, 1L, 2L))
+})
+
+test_that("error ranks reject malformed or infeasible fields", {
+  args <- .generator_args()
+  invalid <- list(1, list(1), list(unknown = 1), list(ker = 1, ker = 2),
+    setNames(list(1), NA_character_), setNames(list(1), ""), list(ker = NULL),
+    list(ker = c(1, 2)), list(ker_m = 1), list(kec_m = rep(1, 4L)),
+    list(ker_m = c(a = 1, a = 2, b = 0)), list(kec_m = c(a = 1, b = 1, d = 1)),
+    list(ker_m = setNames(c(1, 1, 1), c("a", "b", ""))))
+  for (error_rank in invalid) {
+    args$error_rank <- error_rank
+    expect_error(do.call(gen_MMEFM, args), "error_rank")
+  }
+  for (field in c("ker", "kec", "ker_m", "kec_m")) {
+    for (value in c(-1, 1.5, NA_real_, Inf)) {
+      args$error_rank <- setNames(list(if (grepl("_m$", field)) rep(value, 3L) else value), field)
+      expect_error(do.call(gen_MMEFM, args), paste0("error_rank\\$", field))
+    }
+    args$error_rank <- setNames(list(if (grepl("_m$", field)) c(99L, 0L, 0L) else 99L), field)
+    expect_error(do.call(gen_MMEFM, args), paste0("error_rank\\$", field, ".*group.*a"))
+  }
 })

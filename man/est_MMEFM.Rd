@@ -7,13 +7,13 @@
 est_MMEFM(
   Xt,
   rank = NULL,
+  alignment_method = c("VanLoan", "Procrustes"),
+  refit_method = c("VanLoan", "ALS"),
   K0 = 20L,
   max_iter = 20L,
   tol = 1e-04,
-  alignment_method = c("VanLoan", "Procrustes"),
   max_iter_procrustes = 20L,
   tol_procrustes = 1e-04,
-  refit_method = c("VanLoan", "ALS"),
   max_iter_als = 20L,
   tol_als = 1e-04,
   lambda = 0,
@@ -26,19 +26,19 @@ est_MMEFM(
 
 \item{rank}{NULL for automatic selection, a complete named list containing exactly \code{r1}, \code{l1}, \code{r2}, \code{l2}, \code{kr}, \code{kc}, \code{kr_m}, and \code{kc_m}, or an \code{mmefm_rank} object. Global ranks are positive scalar whole numbers; local ranks are positive whole-number vectors in group order. Named local vectors are matched to named \code{Xt} groups. Each rank is smaller than its spatial dimension. Under IC1, row sums \code{r1 + r2[m]} and \code{kr + kr_m[m]} are at most \code{p_m - 1}; column sums \code{l1 + l2[m]} and \code{kc + kc_m[m]} are at most \code{q_m - 1}. Equality is allowed.}
 
+\item{alignment_method}{Method for aligning group-specific global common-factor coordinates: \code{"VanLoan"} (default) or \code{"Procrustes"}.}
+
+\item{refit_method}{Method for refitting global common loadings: \code{"VanLoan"} (default) or \code{"ALS"}. This choice is independent of \code{alignment_method}.}
+
 \item{K0}{Positive whole number of random half-panel column directions per group for initializing the iterative projection procedure (Algorithm 1).}
 
 \item{max_iter}{Positive whole-number limit on Algorithm 1 update iterations.}
 
 \item{tol}{Finite positive tolerance for the sum of loading-space discrepancies in Algorithm 1.}
 
-\item{alignment_method}{Method for aligning group-specific global common-factor coordinates: \code{"VanLoan"} (default) or \code{"Procrustes"}.}
-
 \item{max_iter_procrustes}{Positive whole-number limit on Procrustes alignment iterations.}
 
 \item{tol_procrustes}{Finite positive tolerance for relative change in the Procrustes alignment score.}
-
-\item{refit_method}{Method for refitting global common loadings: \code{"VanLoan"} (default) or \code{"ALS"}. This choice is independent of \code{alignment_method}.}
 
 \item{max_iter_als}{Positive whole-number limit on alternating least-squares (ALS) refitting iterations.}
 

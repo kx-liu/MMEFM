@@ -209,13 +209,10 @@
 #' @param T Positive whole-number time dimension within R's integer range.
 #' @param p,q Whole-number row and column dimension vectors of equal length M >= 2, with entries at least two. Both are unnamed or have unique nonempty matching group names; q is matched to p order.
 #' @param rank Complete eight-field rank list or `mmefm_rank`; see [est_MMEFM()]. Nominal model ranks are positive. IC1 centering requires `r1 + r2[m]` and `kr + kr_m[m]` to be at most `p_m - 1`, and `l1 + l2[m]` and `kc + kc_m[m]` at most `q_m - 1`. Equality is allowed. The generator additionally requires each global/local main-score rank sum to be at most T to construct temporal orthogonality. Supplied rank diagnostics are discarded.
-#' @param main_strength_global Length-two vector of global row and column main-loading strengths in `(0.5, 1]`. A value of 1 gives strong loadings; smaller values give weaker loadings.
-#' @param main_strength_local NULL to repeat global main strengths, or a group list of length-two row/column strengths in `(0.5, 1]`.
-#' @param common_strength_global,common_strength_local NULL for unit strengths, or exactly `list(row = ..., column = ...)`, with each entry a group list. Each group entry is a scalar or one strength per loading column, in `(0.5, 1]`. Named group lists are matched to p order; unnamed lists are positional.
+#' @param strength NULL or a named list with any subset of `main_global`, `main_local`, `common_global`, and `common_local`. Omitted or NULL fields independently default to strength 1. All nested lists and vectors must be unnamed. Values are finite in `(0.5, 1]`; 1 gives strong loadings. See Details for the positional structure.
 #' @param memory NULL for two zero-memory segments for all latent components, or exactly a list with `mu_global`, `mu_local`, `alpha`, `beta`, `G`, and `F`. A basic specification is a numeric vector of finite d < 0.5, or `list(d = ..., seg_lens = ...)` with positive whole segment lengths summing to T. Numeric specifications split T equally, with the remainder in the last segment. Means and G use basic specifications. F uses a basic specification or a group list of them. Alpha/beta use a basic specification or `list(global = <basic>, local = <basic or group list>)`. Local mean innovations share one specification because group demeaning mixes them. No lower bound on d is imposed.
 #' @param phi,error_phi Stable AR coefficient vectors for latent and error processes, respectively, in lag order. A scalar specifies AR(1) with absolute value below one. For AR(p), the roots of `1 - phi[1]*z - ... - phi[p]*z^p` (and the analogous error polynomial) must lie strictly outside the unit circle. Individual coefficients may exceed one in magnitude.
-#' @param error_rank_global Length-two nonnegative whole row/column ranks for the shared error factor process, fitting every group's dimensions.
-#' @param error_rank_local NULL for `c(2, 2)` in every group, or a group list of nonnegative whole row/column error ranks fitting each group's dimensions. Zero ranks give zero error factor components.
+#' @param error_rank NULL or a named list with any subset of `ker`, `kec`, `ker_m`, and `kec_m`. The first two are scalar shared error row/column ranks; the last two are length-M local error row/column rank vectors. Omitted fields default to 2. Values are nonnegative whole numbers not exceeding the corresponding spatial dimensions. Named local vectors match named p/q groups; otherwise matching is positional. Zero in either direction gives a zero factor-error component while retaining zero-rank tensor dimensions.
 #' @param error_loading_zero_prob Probability in `[0, 1)` of setting each Gaussian error-loading entry to zero independently.
 #' @param innovation Gaussian (default) or raw Student-t temporal innovations. Spatial loadings and error-scale entries always use Gaussian draws.
 #' @param df Finite positive Student-t degrees of freedom. Raw draws are not variance-standardized. Simulation accepts any positive df, which need not meet the manuscript's moment assumptions. The value is retained in metadata for either innovation family.
@@ -226,6 +223,12 @@
 #' @param store_components One nonmissing logical. TRUE stores seven full-array signal/error component lists in addition to truth loadings and factors. FALSE, the default, omits these arrays.
 #' @details
 #' The model separates shared temporal variation from group-local variation, and additive main effects from row-column interactions. [est_MMEFM()] fits the same component structure. Generating loadings and fitted loadings need not agree entrywise because factor coordinates are not unique.
+#'
+#' `strength$main_global` is a length-two vector for A1 and B1, shared across groups. `strength$main_local` is a length-M list of length-two vectors for A2 and B2. Main strengths are uniform within each loading matrix, as in ME1. Changing global main strengths does not change the defaults for local main strengths.
+#'
+#' `strength$common_global` and `strength$common_local` are length-M lists in p order. Each group entry is exactly `list(row_strengths, column_strengths)`. Global entries control Q/J with lengths kr/kc; local entries control R/C with lengths `kr_m[m]`/`kc_m[m]`. Each side accepts one scalar, broadcast to its rank, or one value per loading column. This permits heterogeneous strengths as in L1. Groups are positional after q is matched to p; nested group or side names are not accepted.
+#'
+#' The error ranks correspond to E1's \eqn{k_{e,r}}, \eqn{k_{e,c}}, \eqn{k_{e,r}^{(m)}}, and \eqn{k_{e,c}^{(m)}}. NULL and an empty list give rank 2 on every side. Partial lists retain defaults for omitted fields. These nuisance ranks do not have the model's IC1-centered combined-rank restrictions.
 #'
 #' A loading column in spatial dimension n with strength \eqn{\xi} is generated from Gaussian entries scaled by \eqn{n^{-(1-\xi)/2}} and then centered under IC1. Its squared norm is of order \eqn{n^\xi}. Global and local spatial loadings are not artificially orthogonalized. Local grand means sum to zero across groups at each time. Local row and column main-score series are projected off the corresponding global temporal span, enforcing sample IC2 orthogonality up to roundoff. Singular Gram systems error without ridge or fallback.
 #'
@@ -244,14 +247,16 @@
 #' rank <- list(r1 = 1L, l1 = 1L, r2 = c(1L, 1L), l2 = c(1L, 1L),
 #'              kr = 1L, kc = 1L, kr_m = c(1L, 1L), kc_m = c(1L, 1L))
 #' simulation <- gen_MMEFM(T = 8L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L), rank = rank,
+#'                         strength = list(main_global = c(0.8, 1),
+#'                           common_global = list(list(0.7, 1), list(0.9, 0.8))),
+#'                         error_rank = list(ker = 1L, kec = 2L, ker_m = c(0L, 2L), kec_m = c(1L, 0L)),
 #'                         burn = 4L, filter_length = 8L, seed = 2026L, store_components = TRUE)
 #' lapply(simulation$Xt, dim)
 #' reconstructed <- Reduce(`+`, lapply(simulation$components, function(x) x[[1L]]))
 #' max(abs(reconstructed - simulation$Xt[[1L]]))
 #' @export
-gen_MMEFM <- function(T, p, q, rank, main_strength_global = c(1, 1), main_strength_local = NULL,
-                      common_strength_global = NULL, common_strength_local = NULL, memory = NULL,
-                      phi = 0.6, error_phi = 0.2, error_rank_global = c(2L, 2L), error_rank_local = NULL,
+gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory = NULL,
+                      phi = 0.6, error_phi = 0.2,
                       error_loading_zero_prob = 0.95, innovation = c("Gaussian", "Student-t"), df = 6,
                       burn = 200L, filter_length = NULL, active_global = NULL, seed = 2026L, store_components = FALSE) {
   innovation <- match.arg(innovation)
@@ -313,46 +318,68 @@ gen_MMEFM <- function(T, p, q, rank, main_strength_global = c(1, 1), main_streng
         paste(if (is.null(group_names)) which(total > T) else group_names[total > T], collapse = ", "), ".")
     }
   }
-  if (is.null(main_strength_local)) {
-    main_strength_local <- rep(list(main_strength_global), M)
+  strength_fields <- c("main_global", "main_local", "common_global", "common_local")
+  if (is.null(strength)) {
+    strength <- list()
   }
-  main_strength_local <- .simulation_groups(main_strength_local, M, group_names, "main_strength_local")
-  for (value in c(list(main_strength_global), main_strength_local)) {
-    if (!is.numeric(value) || !is.null(dim(value)) || length(value) != 2L || any(!is.finite(value)) ||
-      any(value <= 0.5 | value > 1)) {
-      stop("main_strength_global/local must have two finite strengths in (0.5, 1].")
-    }
+  if (!is.list(strength) || is.data.frame(strength) || !is.null(dim(strength)) ||
+      (length(strength) && (is.null(names(strength)) || anyNA(names(strength)) ||
+        anyDuplicated(names(strength)) || any(!names(strength) %in% strength_fields)))) {
+    stop("strength must be a list with unique fields main_global, main_local, common_global, and common_local.")
   }
-  strengths <- list(global = common_strength_global, local = common_strength_local)
-  for (scope in names(strengths)) {
-    strength <- strengths[[scope]]
-    if (is.null(strength)) {
-      strength <- list(row = rep(list(1), M), column = rep(list(1), M))
-    }
-    if (!is.list(strength) || length(strength) != 2L || is.null(names(strength)) || anyNA(names(strength)) ||
-      anyDuplicated(names(strength)) || !setequal(names(strength), c("row", "column"))) {
-      stop("common_strength_", scope, " must contain exactly row and column.")
-    }
-    strength <- strength[c("row", "column")]
-    for (side in names(strength)) {
-      strength[[side]] <- .simulation_groups(strength[[side]], M, group_names, paste0("common_strength_",
-        scope, "$", side))
-      required <- if (scope == "global") rep(if (side == "row") ranks$kr else ranks$kc,
-        M) else if (side == "row") ranks$kr_m else ranks$kc_m
-      for (m in seq_len(M)) {
-        value <- strength[[side]][[m]]
-        if (!is.numeric(value) || !is.null(dim(value)) || !(length(value) %in% c(1L, required[m])) ||
-          any(!is.finite(value)) || any(value <= 0.5 | value > 1)) {
-          stop("common_strength_", scope, "$", side, "[[", m,
-            "]] must be scalar or match its rank, with strengths in (0.5, 1].")
-        }
-        if (length(value) == 1L) {
-          value <- rep(value, required[m])
-        }
-        strength[[side]][[m]] <- value
+  for (field in strength_fields) {
+    value <- strength[[field]]
+    main <- field %in% c("main_global", "main_local")
+    if (is.null(value)) {
+      value <- if (field == "main_global") c(1, 1) else if (main) {
+        rep(list(c(1, 1)), M)
+      } else {
+        rep(list(list(1, 1)), M)
       }
     }
-    strengths[[scope]] <- strength
+    if (field == "main_global") {
+      groups <- list(value)
+    } else {
+      if (!is.list(value) || is.data.frame(value) || !is.null(dim(value)) || length(value) != M ||
+          !is.null(names(value))) {
+        stop("strength$", field, " must be an unnamed list of length M in p order.")
+      }
+      groups <- value
+    }
+    for (m in seq_along(groups)) {
+      entry <- groups[[m]]
+      label <- paste0("strength$", field, if (field == "main_global") "" else paste0("[[", m, "]]"))
+      if (main) {
+        if (!is.numeric(entry) || !is.null(dim(entry)) || !is.null(names(entry)) || length(entry) != 2L ||
+            any(!is.finite(entry)) || any(entry <= 0.5 | entry > 1)) {
+          stop(label, " must be an unnamed row/column vector of two finite strengths in (0.5, 1].")
+        }
+      } else {
+        if (!is.list(entry) || is.data.frame(entry) || !is.null(dim(entry)) || length(entry) != 2L ||
+            !is.null(names(entry))) {
+          stop(label, " must be an unnamed list of exactly two elements: row and column strengths.")
+        }
+        for (side in seq_len(2L)) {
+          required <- if (field == "common_global") {
+            if (side == 1L) ranks$kr else ranks$kc
+          } else {
+            if (side == 1L) ranks$kr_m[m] else ranks$kc_m[m]
+          }
+          v <- entry[[side]]
+          if (!is.numeric(v) || !is.null(dim(v)) || !is.null(names(v)) ||
+              !length(v) || !length(v) %in% c(1L, required) || any(!is.finite(v)) || any(v <= 0.5 | v > 1)) {
+            stop(label, " ", if (side == 1L) "row" else "column",
+              " strengths must be unnamed, scalar or length ", required, ", and finite in (0.5, 1].")
+          }
+          if (length(v) == 1L) {
+            v <- rep(v, required)
+          }
+          entry[[side]] <- v
+        }
+      }
+      groups[[m]] <- entry
+    }
+    strength[[field]] <- if (field == "main_global") groups[[1L]] else groups
   }
   memory <- .simulation_memory(memory, T, M, group_names)
   for (name in c("phi", "error_phi")) {
@@ -365,23 +392,46 @@ gen_MMEFM <- function(T, p, q, rank, main_strength_global = c(1, 1), main_streng
     !is.finite(error_loading_zero_prob) || error_loading_zero_prob < 0 || error_loading_zero_prob >= 1) {
     stop("error_loading_zero_prob must be in [0, 1).")
   }
-  if (is.null(error_rank_local)) {
-    error_rank_local <- rep(list(c(2L, 2L)), M)
+  error_fields <- c("ker", "kec", "ker_m", "kec_m")
+  if (is.null(error_rank)) {
+    error_rank <- list()
   }
-  error_rank_local <- .simulation_groups(error_rank_local, M, group_names, "error_rank_local")
-  for (m in seq_len(M)) {
-    for (scope in c("global", "local")) {
-      value <- if (scope == "global") error_rank_global else error_rank_local[[m]]
-      if (!is.numeric(value) || !is.null(dim(value)) || length(value) != 2L || any(!is.finite(value)) ||
-        any(value < 0) || any(value != floor(value)) || any(value > c(p[m], q[m]))) {
-        stop("error_rank_", scope, " must have two nonnegative whole ranks fitting group ", m, ".")
+  if (!is.list(error_rank) || is.data.frame(error_rank) || !is.null(dim(error_rank)) ||
+      (length(error_rank) && (is.null(names(error_rank)) || anyNA(names(error_rank)) ||
+        anyDuplicated(names(error_rank)) || any(!names(error_rank) %in% error_fields)))) {
+    stop("error_rank must be a list with unique fields ker, kec, ker_m, and kec_m.")
+  }
+  for (field in error_fields) {
+    global <- field %in% c("ker", "kec")
+    required <- if (global) 1L else M
+    value <- if (field %in% names(error_rank)) error_rank[[field]] else rep(2L, required)
+    if (!is.numeric(value) || !is.null(dim(value)) || length(value) != required ||
+        any(!is.finite(value)) || any(value < 0) || any(value != floor(value))) {
+      stop("error_rank$", field, " must contain ", required, " nonnegative whole-number value(s).")
+    }
+    if (!global && !is.null(names(value))) {
+      if (anyNA(names(value)) || any(!nzchar(names(value))) || anyDuplicated(names(value))) {
+        stop("error_rank$", field, " group names must be nonempty, nonmissing, and unique.")
       }
-      if (scope == "local") {
-        error_rank_local[[m]] <- as.integer(value)
+      if (!is.null(group_names)) {
+        if (!setequal(names(value), group_names)) {
+          stop("error_rank$", field, " names must match the p/q group names exactly.")
+        }
+        value <- value[match(group_names, names(value))]
       }
     }
+    limit <- if (field %in% c("ker", "ker_m")) p else q
+    invalid <- which(if (global) rep(value, M) > limit else value > limit)
+    if (length(invalid)) {
+      stop("error_rank$", field, " must fit its spatial dimension in group(s): ",
+        paste(if (is.null(group_names)) invalid else group_names[invalid], collapse = ", "), ".")
+    }
+    value <- as.integer(value)
+    if (!global) {
+      names(value) <- group_names
+    }
+    error_rank[[field]] <- value
   }
-  error_rank_global <- as.integer(error_rank_global)
   active <- rep(TRUE, M)
   if (!is.null(active_global)) {
     if (is.logical(active_global)) {
@@ -418,16 +468,16 @@ gen_MMEFM <- function(T, p, q, rank, main_strength_global = c(1, 1), main_streng
     A1 <- B1 <- A2 <- B2 <- vector("list", M)
     names(A1) <- names(B1) <- names(A2) <- names(B2) <- group_names
     for (m in seq_len(M)) {
-      A1[[m]] <- .simulation_loading(p[m], ranks$r1, main_strength_global[1L])
+      A1[[m]] <- .simulation_loading(p[m], ranks$r1, strength$main_global[1L])
     }
     for (m in seq_len(M)) {
-      B1[[m]] <- .simulation_loading(q[m], ranks$l1, main_strength_global[2L])
+      B1[[m]] <- .simulation_loading(q[m], ranks$l1, strength$main_global[2L])
     }
     for (m in seq_len(M)) {
-      A2[[m]] <- .simulation_loading(p[m], ranks$r2[m], main_strength_local[[m]][1L])
+      A2[[m]] <- .simulation_loading(p[m], ranks$r2[m], strength$main_local[[m]][1L])
     }
     for (m in seq_len(M)) {
-      B2[[m]] <- .simulation_loading(q[m], ranks$l2[m], main_strength_local[[m]][2L])
+      B2[[m]] <- .simulation_loading(q[m], ranks$l2[m], strength$main_local[[m]][2L])
     }
     alpha <- .simulation_series(ranks$r1, T, memory$alpha$global, phi, innovation, df, burn, filter_length)
     beta <- .simulation_series(ranks$l1, T, memory$beta$global, phi, innovation, df, burn, filter_length)
@@ -454,41 +504,41 @@ gen_MMEFM <- function(T, p, q, rank, main_strength_global = c(1, 1), main_streng
     Q <- J <- R <- C <- vector("list", M)
     names(Q) <- names(J) <- names(R) <- names(C) <- group_names
     for (m in seq_len(M)) {
-      Q[[m]] <- .simulation_loading(p[m], ranks$kr, strengths$global$row[[m]])
+      Q[[m]] <- .simulation_loading(p[m], ranks$kr, strength$common_global[[m]][[1L]])
     }
     for (m in seq_len(M)) {
-      J[[m]] <- .simulation_loading(q[m], ranks$kc, strengths$global$column[[m]])
+      J[[m]] <- .simulation_loading(q[m], ranks$kc, strength$common_global[[m]][[2L]])
     }
     for (m in seq_len(M)) {
-      R[[m]] <- .simulation_loading(p[m], ranks$kr_m[m], strengths$local$row[[m]])
+      R[[m]] <- .simulation_loading(p[m], ranks$kr_m[m], strength$common_local[[m]][[1L]])
     }
     for (m in seq_len(M)) {
-      C[[m]] <- .simulation_loading(q[m], ranks$kc_m[m], strengths$local$column[[m]])
+      C[[m]] <- .simulation_loading(q[m], ranks$kc_m[m], strength$common_local[[m]][[2L]])
     }
     Q_e <- J_e <- R_e <- C_e <- vector("list", M)
     names(Q_e) <- names(J_e) <- names(R_e) <- names(C_e) <- group_names
     for (m in seq_len(M)) {
-      Q_e[[m]] <- .simulation_error_loading(p[m], error_rank_global[1L], error_loading_zero_prob)
+      Q_e[[m]] <- .simulation_error_loading(p[m], error_rank$ker, error_loading_zero_prob)
     }
     for (m in seq_len(M)) {
-      J_e[[m]] <- .simulation_error_loading(q[m], error_rank_global[2L], error_loading_zero_prob)
+      J_e[[m]] <- .simulation_error_loading(q[m], error_rank$kec, error_loading_zero_prob)
     }
     for (m in seq_len(M)) {
-      R_e[[m]] <- .simulation_error_loading(p[m], error_rank_local[[m]][1L],
+      R_e[[m]] <- .simulation_error_loading(p[m], error_rank$ker_m[m],
         error_loading_zero_prob)
     }
     for (m in seq_len(M)) {
-      C_e[[m]] <- .simulation_error_loading(q[m], error_rank_local[[m]][2L],
+      C_e[[m]] <- .simulation_error_loading(q[m], error_rank$kec_m[m],
         error_loading_zero_prob)
     }
     short_memory <- list(d = 0, seg_lens = T)
-    G_e <- array(.simulation_series(prod(error_rank_global), T, short_memory, error_phi, innovation, df, burn,
-      filter_length), c(T, error_rank_global))
+    G_e <- array(.simulation_series(as.numeric(error_rank$ker) * error_rank$kec, T,
+      short_memory, error_phi, innovation, df, burn, filter_length), c(T, error_rank$ker, error_rank$kec))
     F_e <- sigma <- vector("list", M)
     names(F_e) <- names(sigma) <- group_names
     for (m in seq_len(M)) {
-      F_e[[m]] <- array(.simulation_series(prod(error_rank_local[[m]]), T, short_memory, error_phi,
-        innovation, df, burn, filter_length), c(T, error_rank_local[[m]]))
+      F_e[[m]] <- array(.simulation_series(as.numeric(error_rank$ker_m[m]) * error_rank$kec_m[m], T, short_memory, error_phi,
+        innovation, df, burn, filter_length), c(T, unname(error_rank$ker_m[m]), unname(error_rank$kec_m[m])))
       sigma[[m]] <- matrix(abs(stats::rnorm(as.numeric(p[m]) * q[m])), p[m], q[m])
     }
     for (m in which(!active)) {
@@ -526,10 +576,10 @@ gen_MMEFM <- function(T, p, q, rank, main_strength_global = c(1, 1), main_streng
             as.vector(B2[[m]] %*% beta_local[[m]][t, ]))
         global_common <- Q[[m]] %*% matrix(G[t, , , drop = FALSE], ranks$kr, ranks$kc) %*% t(J[[m]])
         local_common <- R[[m]] %*% matrix(F[[m]][t, , , drop = FALSE], ranks$kr_m[m], ranks$kc_m[m]) %*% t(C[[m]])
-        error_global <- Q_e[[m]] %*% matrix(G_e[t, , , drop = FALSE], error_rank_global[1L],
-          error_rank_global[2L]) %*% t(J_e[[m]])
-        error_local <- R_e[[m]] %*% matrix(F_e[[m]][t, , , drop = FALSE], error_rank_local[[m]][1L],
-          error_rank_local[[m]][2L]) %*% t(C_e[[m]])
+        error_global <- Q_e[[m]] %*% matrix(G_e[t, , , drop = FALSE], error_rank$ker,
+          error_rank$kec) %*% t(J_e[[m]])
+        error_local <- R_e[[m]] %*% matrix(F_e[[m]][t, , , drop = FALSE], error_rank$ker_m[m],
+          error_rank$kec_m[m]) %*% t(C_e[[m]])
         error_idiosyncratic <- sigma[[m]] * matrix(epsilon[t, , , drop = FALSE], pm, qm)
         Xt[[m]][t, , ] <- global_main + local_main + global_common + local_common + error_global +
           error_local + error_idiosyncratic

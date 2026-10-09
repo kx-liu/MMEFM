@@ -43,9 +43,9 @@
 #' vapply(residuals(fit), function(x) sqrt(mean(x^2)), numeric(1L))
 #' @export
 est_MMEFM <- function(
-    Xt, rank = NULL, K0 = 20L, max_iter = 20L, tol = 1e-4,
-    alignment_method = c("VanLoan", "Procrustes"), max_iter_procrustes = 20L, tol_procrustes = 1e-4,
-    refit_method = c("VanLoan", "ALS"), max_iter_als = 20L, tol_als = 1e-4,
+    Xt, rank = NULL, alignment_method = c("VanLoan", "Procrustes"), refit_method = c("VanLoan", "ALS"),
+    K0 = 20L, max_iter = 20L, tol = 1e-4, max_iter_procrustes = 20L, tol_procrustes = 1e-4,
+    max_iter_als = 20L, tol_als = 1e-4,
     lambda = 0, seed = 2026L, verbose = FALSE) {
   call <- match.call()
   data_info <- .validate_Xt(Xt)
@@ -79,7 +79,7 @@ est_MMEFM <- function(
     stop("verbose must be one nonmissing logical.")
   }
   if (is.null(rank)) {
-    rank <- select_MMEFM_rank(Xt, K0, max_iter, tol, seed, verbose)
+    rank <- select_MMEFM_rank(Xt, K0 = K0, max_iter = max_iter, tol = tol, seed = seed, verbose = verbose)
   }
   ranks <- .validate_rank(rank, data_info)
   diagnostics <- if (inherits(rank, "mmefm_rank")) rank$diagnostics else NULL

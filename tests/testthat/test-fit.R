@@ -170,3 +170,16 @@ test_that("fitted and residual methods retain a singleton time dimension", {
   }
   for (m in seq_along(x$Xt)) expect_equal(residuals(fit)[[m]], array(0, c(1L, dim(x$Xt[[m]])[2:3])), tolerance = 1e-10)
 })
+
+test_that("estimator formals put statistical method choices before numerical controls", {
+  expect_identical(names(formals(est_MMEFM)), c("Xt", "rank", "alignment_method", "refit_method", "K0",
+    "max_iter", "tol", "max_iter_procrustes", "tol_procrustes", "max_iter_als", "tol_als", "lambda", "seed", "verbose"))
+  x <- .fit_fixture()
+  default <- est_MMEFM(x$Xt, rank = x$rank, K0 = 8L)
+  explicit <- est_MMEFM(x$Xt, rank = x$rank, alignment_method = "VanLoan", refit_method = "VanLoan", K0 = 8L)
+  positional <- est_MMEFM(x$Xt, x$rank, "VanLoan", "VanLoan", K0 = 8L)
+  expect_identical(default[-1L], explicit[-1L])
+  expect_identical(default[-1L], positional[-1L])
+  expect_identical(summary(default)$alignment_method, "VanLoan")
+  expect_identical(summary(default)$refit_method, "VanLoan")
+})

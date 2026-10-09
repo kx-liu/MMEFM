@@ -300,7 +300,7 @@ After appropriate local validation, stage only task-related files and automatica
 
 Never force-push, reset unrelated history, or automatically merge unrelated branches. If switching, updating, committing, or pushing is unsafe, stop and report the problem.
 
-During the current package-development stage, GitHub Actions checks are manually triggered rather than run on every push. Continue focused local validation after each task. Do not restore automatic CI triggers until the researcher explicitly requests the final validation stage.
+GitHub Actions checks run automatically on pushes to `main`, with manual dispatch also available. Perform focused local validation before committing. CI must not submit to CRAN or publish releases automatically.
 
 ## Agent output
 

@@ -9,15 +9,11 @@ gen_MMEFM(
   p,
   q,
   rank,
-  main_strength_global = c(1, 1),
-  main_strength_local = NULL,
-  common_strength_global = NULL,
-  common_strength_local = NULL,
+  strength = NULL,
+  error_rank = NULL,
   memory = NULL,
   phi = 0.6,
   error_phi = 0.2,
-  error_rank_global = c(2L, 2L),
-  error_rank_local = NULL,
   error_loading_zero_prob = 0.95,
   innovation = c("Gaussian", "Student-t"),
   df = 6,
@@ -35,19 +31,13 @@ gen_MMEFM(
 
 \item{rank}{Complete eight-field rank list or \code{mmefm_rank}; see \code{\link[=est_MMEFM]{est_MMEFM()}}. Nominal model ranks are positive. IC1 centering requires \code{r1 + r2[m]} and \code{kr + kr_m[m]} to be at most \code{p_m - 1}, and \code{l1 + l2[m]} and \code{kc + kc_m[m]} at most \code{q_m - 1}. Equality is allowed. The generator additionally requires each global/local main-score rank sum to be at most T to construct temporal orthogonality. Supplied rank diagnostics are discarded.}
 
-\item{main_strength_global}{Length-two vector of global row and column main-loading strengths in \verb{(0.5, 1]}. A value of 1 gives strong loadings; smaller values give weaker loadings.}
+\item{strength}{NULL or a named list with any subset of \code{main_global}, \code{main_local}, \code{common_global}, and \code{common_local}. Omitted or NULL fields independently default to strength 1. All nested lists and vectors must be unnamed. Values are finite in \verb{(0.5, 1]}; 1 gives strong loadings. See Details for the positional structure.}
 
-\item{main_strength_local}{NULL to repeat global main strengths, or a group list of length-two row/column strengths in \verb{(0.5, 1]}.}
-
-\item{common_strength_global, common_strength_local}{NULL for unit strengths, or exactly \code{list(row = ..., column = ...)}, with each entry a group list. Each group entry is a scalar or one strength per loading column, in \verb{(0.5, 1]}. Named group lists are matched to p order; unnamed lists are positional.}
+\item{error_rank}{NULL or a named list with any subset of \code{ker}, \code{kec}, \code{ker_m}, and \code{kec_m}. The first two are scalar shared error row/column ranks; the last two are length-M local error row/column rank vectors. Omitted fields default to 2. Values are nonnegative whole numbers not exceeding the corresponding spatial dimensions. Named local vectors match named p/q groups; otherwise matching is positional. Zero in either direction gives a zero factor-error component while retaining zero-rank tensor dimensions.}
 
 \item{memory}{NULL for two zero-memory segments for all latent components, or exactly a list with \code{mu_global}, \code{mu_local}, \code{alpha}, \code{beta}, \code{G}, and \code{F}. A basic specification is a numeric vector of finite d < 0.5, or \code{list(d = ..., seg_lens = ...)} with positive whole segment lengths summing to T. Numeric specifications split T equally, with the remainder in the last segment. Means and G use basic specifications. F uses a basic specification or a group list of them. Alpha/beta use a basic specification or \verb{list(global = <basic>, local = <basic or group list>)}. Local mean innovations share one specification because group demeaning mixes them. No lower bound on d is imposed.}
 
 \item{phi, error_phi}{Stable AR coefficient vectors for latent and error processes, respectively, in lag order. A scalar specifies AR(1) with absolute value below one. For AR(p), the roots of \code{1 - phi[1]*z - ... - phi[p]*z^p} (and the analogous error polynomial) must lie strictly outside the unit circle. Individual coefficients may exceed one in magnitude.}
-
-\item{error_rank_global}{Length-two nonnegative whole row/column ranks for the shared error factor process, fitting every group's dimensions.}
-
-\item{error_rank_local}{NULL for \code{c(2, 2)} in every group, or a group list of nonnegative whole row/column error ranks fitting each group's dimensions. Zero ranks give zero error factor components.}
 
 \item{error_loading_zero_prob}{Probability in \verb{[0, 1)} of setting each Gaussian error-loading entry to zero independently.}
 
@@ -80,6 +70,12 @@ Generate grouped matrix-valued time series with global and local grand means, ro
 \details{
 The model separates shared temporal variation from group-local variation, and additive main effects from row-column interactions. \code{\link[=est_MMEFM]{est_MMEFM()}} fits the same component structure. Generating loadings and fitted loadings need not agree entrywise because factor coordinates are not unique.
 
+\code{strength$main_global} is a length-two vector for A1 and B1, shared across groups. \code{strength$main_local} is a length-M list of length-two vectors for A2 and B2. Main strengths are uniform within each loading matrix, as in ME1. Changing global main strengths does not change the defaults for local main strengths.
+
+\code{strength$common_global} and \code{strength$common_local} are length-M lists in p order. Each group entry is exactly \code{list(row_strengths, column_strengths)}. Global entries control Q/J with lengths kr/kc; local entries control R/C with lengths \code{kr_m[m]}/\code{kc_m[m]}. Each side accepts one scalar, broadcast to its rank, or one value per loading column. This permits heterogeneous strengths as in L1. Groups are positional after q is matched to p; nested group or side names are not accepted.
+
+The error ranks correspond to E1's \eqn{k_{e,r}}, \eqn{k_{e,c}}, \eqn{k_{e,r}^{(m)}}, and \eqn{k_{e,c}^{(m)}}. NULL and an empty list give rank 2 on every side. Partial lists retain defaults for omitted fields. These nuisance ranks do not have the model's IC1-centered combined-rank restrictions.
+
 A loading column in spatial dimension n with strength \eqn{\xi} is generated from Gaussian entries scaled by \eqn{n^{-(1-\xi)/2}} and then centered under IC1. Its squared norm is of order \eqn{n^\xi}. Global and local spatial loadings are not artificially orthogonalized. Local grand means sum to zero across groups at each time. Local row and column main-score series are projected off the corresponding global temporal span, enforcing sample IC2 orthogonality up to roundoff. Singular Gram systems error without ridge or fallback.
 
 Memory specifications apply segment-specific fractional filters to stable AR processes. Zero memory gives direct AR recursion. See \code{\link[=gen_piecewise_arfima]{gen_piecewise_arfima()}} for the retained-sample warmup and truncation conventions. Piecewise memory can change temporal dependence; it does not imply whole-sample stationarity.
@@ -90,6 +86,9 @@ The error contains shared and local factor processes plus cell-specific error. E
 rank <- list(r1 = 1L, l1 = 1L, r2 = c(1L, 1L), l2 = c(1L, 1L),
              kr = 1L, kc = 1L, kr_m = c(1L, 1L), kc_m = c(1L, 1L))
 simulation <- gen_MMEFM(T = 8L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L), rank = rank,
+                        strength = list(main_global = c(0.8, 1),
+                          common_global = list(list(0.7, 1), list(0.9, 0.8))),
+                        error_rank = list(ker = 1L, kec = 2L, ker_m = c(0L, 2L), kec_m = c(1L, 0L)),
                         burn = 4L, filter_length = 8L, seed = 2026L, store_components = TRUE)
 lapply(simulation$Xt, dim)
 reconstructed <- Reduce(`+`, lapply(simulation$components, function(x) x[[1L]]))
