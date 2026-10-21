@@ -65,7 +65,7 @@ The [Getting Started vignette](vignettes/getting-started.Rmd) explains the model
 
 ## Accompanying manuscript
 
-Kaixin Liu, Clifford Lam, and Zetai Cen. *Multilevel Main Effects Matrix Factor Model*. Manuscript.
+Kaixin Liu, Clifford Lam, and Zetai Cen (2026). *Multilevel Main Effects Matrix Factor Model*. arXiv preprint. [doi:10.48550/arXiv.2610.18335](https://doi.org/10.48550/arXiv.2610.18335).
 
 ## Development status and license
 
