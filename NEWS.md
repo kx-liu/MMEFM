@@ -1,5 +1,6 @@
-# MMEFM 0.1.0
+# MMEFM 0.1.1
 
+* Rename the simulation time-length argument from `T` to `TT` and the internal local common-factor variable to comply with CRAN naming guidance. Statistical calculations and returned object schemas are unchanged.
 * Simulate grouped matrix-valued time series with heterogeneous dimensions, Gaussian or raw Student-t innovations, and optional model-component storage.
 * Generate piecewise ARFIMA series with stable AR(p) dynamics and shared or series-specific fractional memory.
 * Estimate global and local main effects and common components at supplied or automatically selected ranks, with Van Loan alignment and refitting by default and optional Procrustes alignment and ALS refitting.

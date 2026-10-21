@@ -5,7 +5,7 @@
 \title{Simulate a Multilevel Main Effects Matrix Factor Model}
 \usage{
 gen_MMEFM(
-  T,
+  TT,
   p,
   q,
   rank,
@@ -25,17 +25,17 @@ gen_MMEFM(
 )
 }
 \arguments{
-\item{T}{Positive whole-number time dimension within R's integer range.}
+\item{TT}{Positive whole-number time dimension within R's integer range.}
 
 \item{p, q}{Whole-number row and column dimension vectors of equal length M >= 2, with entries at least two. Both are unnamed or have unique nonempty matching group names; q is matched to p order.}
 
-\item{rank}{Complete eight-field rank list or \code{mmefm_rank}; see \code{\link[=est_MMEFM]{est_MMEFM()}}. Nominal model ranks are positive. IC1 centering requires \code{r1 + r2[m]} and \code{kr + kr_m[m]} to be at most \code{p_m - 1}, and \code{l1 + l2[m]} and \code{kc + kc_m[m]} at most \code{q_m - 1}. Equality is allowed. The generator additionally requires each global/local main-score rank sum to be at most T to construct temporal orthogonality. Supplied rank diagnostics are discarded.}
+\item{rank}{Complete eight-field rank list or \code{mmefm_rank}; see \code{\link[=est_MMEFM]{est_MMEFM()}}. Nominal model ranks are positive. IC1 centering requires \code{r1 + r2[m]} and \code{kr + kr_m[m]} to be at most \code{p_m - 1}, and \code{l1 + l2[m]} and \code{kc + kc_m[m]} at most \code{q_m - 1}. Equality is allowed. The generator additionally requires each global/local main-score rank sum to be at most TT to construct temporal orthogonality. Supplied rank diagnostics are discarded.}
 
 \item{strength}{NULL or a named list with any subset of \code{main_global}, \code{main_local}, \code{common_global}, and \code{common_local}. Omitted or NULL fields independently default to strength 1. All nested lists and vectors must be unnamed. Values are finite in \verb{(0.5, 1]}; 1 gives strong loadings. See Details for the positional structure.}
 
 \item{error_rank}{NULL or a named list with any subset of \code{ker}, \code{kec}, \code{ker_m}, and \code{kec_m}. The first two are scalar shared error row/column ranks; the last two are length-M local error row/column rank vectors. Omitted fields default to 2. Values are nonnegative whole numbers not exceeding the corresponding spatial dimensions. Named local vectors match named p/q groups; otherwise matching is positional. Zero in either direction gives a zero factor-error component while retaining zero-rank tensor dimensions.}
 
-\item{memory}{NULL for two zero-memory segments for all latent components, or exactly a list with \code{mu_global}, \code{mu_local}, \code{alpha}, \code{beta}, \code{G}, and \code{F}. A basic specification is a numeric vector of finite d < 0.5, or \code{list(d = ..., seg_lens = ...)} with positive whole segment lengths summing to T. Numeric specifications split T equally, with the remainder in the last segment. Means and G use basic specifications. F uses a basic specification or a group list of them. Alpha/beta use a basic specification or \verb{list(global = <basic>, local = <basic or group list>)}. Local mean innovations share one specification because group demeaning mixes them. No lower bound on d is imposed.}
+\item{memory}{NULL for two zero-memory segments for all latent components, or exactly a list with \code{mu_global}, \code{mu_local}, \code{alpha}, \code{beta}, \code{G}, and \code{F}. A basic specification is a numeric vector of finite d < 0.5, or \code{list(d = ..., seg_lens = ...)} with positive whole segment lengths summing to TT. Numeric specifications split TT equally, with the remainder in the last segment. Means and G use basic specifications. F uses a basic specification or a group list of them. Alpha/beta use a basic specification or \verb{list(global = <basic>, local = <basic or group list>)}. Local mean innovations share one specification because group demeaning mixes them. No lower bound on d is imposed.}
 
 \item{phi, error_phi}{Stable AR coefficient vectors for latent and error processes, respectively, in lag order. A scalar specifies AR(1) with absolute value below one. For AR(p), the roots of \code{1 - phi[1]*z - ... - phi[p]*z^p} (and the analogous error polynomial) must lie strictly outside the unit circle. Individual coefficients may exceed one in magnitude.}
 
@@ -47,7 +47,7 @@ gen_MMEFM(
 
 \item{burn}{Nonnegative whole-number burn-in within R's integer range.}
 
-\item{filter_length}{NULL for \code{min(2000, max(200, 5*T))}, or a nonnegative whole fractional/AR impulse-response truncation length within R's integer range. See \code{\link[=gen_piecewise_arfima]{gen_piecewise_arfima()}} for filtering and warmup conventions.}
+\item{filter_length}{NULL for \code{min(2000, max(200, 5*TT))}, or a nonnegative whole fractional/AR impulse-response truncation length within R's integer range. See \code{\link[=gen_piecewise_arfima]{gen_piecewise_arfima()}} for filtering and warmup conventions.}
 
 \item{active_global}{NULL for all groups, a nonmissing logical length-M vector in group order, or unique whole group indices, including empty indices. Zero or at least two active groups are allowed; a singleton errors. Inactive global common loadings Q/J are zeroed after their ordinary draws. Nominal positive ranks and G are unchanged.}
 
@@ -85,7 +85,7 @@ The error contains shared and local factor processes plus cell-specific error. E
 \examples{
 rank <- list(r1 = 1L, l1 = 1L, r2 = c(1L, 1L), l2 = c(1L, 1L),
              kr = 1L, kc = 1L, kr_m = c(1L, 1L), kc_m = c(1L, 1L))
-simulation <- gen_MMEFM(T = 8L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L), rank = rank,
+simulation <- gen_MMEFM(TT = 8L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L), rank = rank,
                         strength = list(main_global = c(0.8, 1),
                           common_global = list(list(0.7, 1), list(0.9, 0.8))),
                         error_rank = list(ker = 1L, kec = 2L, ker_m = c(0L, 2L), kec_m = c(1L, 0L)),

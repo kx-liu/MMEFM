@@ -1,5 +1,5 @@
 .generator_args <- function() {
-  list(T = 8L, p = c(a = 4L, b = 5L, c = 6L), q = c(c = 4L, b = 6L, a = 5L),
+  list(TT = 8L, p = c(a = 4L, b = 5L, c = 6L), q = c(c = 4L, b = 6L, a = 5L),
        rank = list(r1 = 1L, l1 = 1L, r2 = rep(1L, 3L), l2 = rep(1L, 3L), kr = 1L, kc = 1L, kr_m = rep(1L, 3L), kc_m = rep(1L, 3L)),
        burn = 4L, filter_length = 8L)
 }
@@ -141,14 +141,14 @@ test_that("strength expansion and named memory specifications are canonical", {
 
 test_that("temporal equality is allowed and infeasible rank sums error", {
   args <- .generator_args()
-  args$T <- 2L
+  args$TT <- 2L
   expect_warning(do.call(gen_MMEFM, args), NA)
-  args$T <- 1L
+  args$TT <- 1L
   expect_error(do.call(gen_MMEFM, args), "row.*group.*a")
-  args$T <- 2L
+  args$TT <- 2L
   args$rank$l1 <- 2L
   expect_error(do.call(gen_MMEFM, args), "column.*group.*a")
-  args$T <- 8L
+  args$TT <- 8L
   args$rank$r1 <- 3L
   args$rank$r2 <- rep(2L, 3L)
   expect_error(do.call(gen_MMEFM, args), "r1.*r2.*row")
@@ -197,7 +197,7 @@ test_that("generator preserves RNG after success and stochastic error", {
 
 test_that("generator controls reject invalid dimensions and specifications", {
   args <- .generator_args()
-  invalid <- list(T = 1.5, p = c(1, 4, 5), q = c(4, 5), strength = list(main_global = c(0.5, 1)), phi = 1, error_phi = Inf,
+  invalid <- list(TT = 1.5, p = c(1, 4, 5), q = c(4, 5), strength = list(main_global = c(0.5, 1)), phi = 1, error_phi = Inf,
                   error_rank = list(ker = -1),
                   error_loading_zero_prob = 1, innovation = "other", df = 0, burn = -1,
                   filter_length = 1.5, active_global = c(1, 1), seed = NA_real_, store_components = NA)
@@ -236,7 +236,6 @@ test_that("rectangular multi-rank cores and score matrices retain their shapes",
     expect_equal(crossprod(x$main_effect$global$alpha, x$main_effect$local$alpha[[m]]), matrix(0, 2L, 1L), tolerance = 1e-12)
   }
 })
-
 
 test_that("maximum centered spatial ranks and the temporal boundary are usable", {
   p <- c(a = 4L, b = 5L, c = 6L)
@@ -511,4 +510,15 @@ test_that("error ranks reject malformed or infeasible fields", {
     args$error_rank <- setNames(list(if (grepl("_m$", field)) c(99L, 0L, 0L) else 99L), field)
     expect_error(do.call(gen_MMEFM, args), paste0("error_rank\\$", field, ".*group.*a"))
   }
+})
+
+test_that("generator uses the TT time-length argument", {
+  expect_identical(names(formals(gen_MMEFM))[1L], "TT")
+  expect_false("T" %in% names(formals(gen_MMEFM)))
+  rank <- list(r1 = 1L, l1 = 1L, r2 = c(1L, 1L), l2 = c(1L, 1L),
+               kr = 1L, kc = 1L, kr_m = c(1L, 1L), kc_m = c(1L, 1L))
+  simulation <- gen_MMEFM(TT = 6L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L),
+                          rank = rank, burn = 0L, filter_length = 2L)
+  expect_identical(lapply(simulation$Xt, dim), list(a = c(6L, 4L, 5L), b = c(6L, 5L, 4L)))
+  expect_identical(simulation$dimensions$T, 6L)
 })

@@ -1,24 +1,24 @@
-## Release status
+## Resubmission
 
-First submission of MMEFM, version 0.1.0. This is a release candidate; the package has not been submitted to CRAN.
+This is a resubmission following CRAN's manual review of MMEFM 0.1.0. MMEFM 0.1.1 is intended to be the first CRAN release; no version has yet been accepted on CRAN.
+
+In response to the reviewer's request, the time-length argument `T` has been renamed to `TT` in `gen_MMEFM()` and `gen_piecewise_arfima()`. An internal standalone variable `F` has also been renamed to `F_local`. All affected documentation, examples, tests, and vignettes have been updated.
+
+The statistical methods, numerical behavior, and returned object schemas remain unchanged. Deterministic before/after comparisons produced identical full generator outputs and ARFIMA series, with caller RNG state and kind preserved.
 
 ## Test environments
 
 * Local: macOS 27.0.1, R 4.6.1 (2026-06-24), aarch64-apple-darwin23; full `R CMD check --as-cran`.
-* GitHub Actions: macOS 26.6.2 (aarch64), Windows x64 (build 26100), and Ubuntu 24.04.5 LTS (x86_64), each with R release 4.6.1; Ubuntu 24.04.5 LTS with R-devel (2026-10-08 r90650). These checks use `R CMD check --no-manual`, not `--as-cran`.
-
-The four-platform results were verified from [workflow run 37982998797](https://github.com/kx-liu/MMEFM/actions/runs/37982998797), targeting code commit `45f0c8ac545b62de64fff7440b14e9a9cf3d10e2`.
+* GitHub Actions uses `R CMD check --no-manual` on macOS and Windows with R release, and Ubuntu with R release and R-devel. These checks are distinct from the full local check reported below.
 
 ## R CMD check results
 
-`R CMD check --as-cran` on `MMEFM_0.1.0.tar.gz`: 0 ERRORs, 0 WARNINGs, 1 NOTE.
+`R CMD check --as-cran` on `MMEFM_0.1.1.tar.gz`: 0 ERRORs, 0 WARNINGs, 1 NOTE.
 
-* CRAN incoming feasibility: "New submission". This is expected for the first submission; no development-version NOTE remains.
+* CRAN incoming feasibility: "New submission". This is expected because MMEFM has not previously been released on CRAN.
 
-HTML validation, including mathematical rendering, completed successfully with V8 8.2.0 and HTML Tidy 5.8.0. Evaluated examples, vignette checks and rebuilding, and the PDF manual passed. All 2,316 regression-test assertions passed, with 0 failures, warnings, or skips.
-
-All four GitHub Actions checks reported `Status: OK`, with 0 ERRORs, 0 WARNINGs, and 0 NOTEs. Each passed the examples, vignette checks, and all 2,316 regression-test assertions, with 0 failures, warnings, or skips.
+HTML validation, including mathematical rendering, completed successfully with V8 8.2.0 and HTML Tidy 5.8.0. Evaluated examples, vignette checks and rebuilding, and the PDF manual passed. All 2,324 regression-test assertions passed, with 0 failures, warnings, or skips.
 
 ## Additional remarks
 
-MMEFM implements statistical methodology for grouped matrix-valued time series, separating global and local main effects from bilinear common components.
+MMEFM implements statistical methodology for grouped matrix-valued time series, separating global and local main effects from bilinear common components. The word "nonstationary" is an established technical term in time series analysis.

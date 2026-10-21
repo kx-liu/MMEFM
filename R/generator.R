@@ -22,7 +22,7 @@
   if (is.numeric(spec) && is.null(dim(spec))) {
     d <- spec
     if (!length(d) || length(d) > TT) {
-      stop(label, " must have between one and T segments.")
+      stop(label, " must have between one and TT segments.")
     }
     seg_lens <- rep(as.integer(floor(TT / length(d))), length(d))
     seg_lens[length(d)] <- TT - sum(seg_lens[-length(d)])
@@ -39,7 +39,7 @@
   }
   if (!is.numeric(seg_lens) || !is.null(dim(seg_lens)) || length(seg_lens) != length(d) ||
       any(!is.finite(seg_lens)) || any(seg_lens < 1) || any(seg_lens != floor(seg_lens)) || sum(seg_lens) != TT) {
-    stop(label, "$seg_lens must be positive whole numbers matching d and summing to T.")
+    stop(label, "$seg_lens must be positive whole numbers matching d and summing to TT.")
   }
   list(d = as.numeric(d), seg_lens = as.integer(seg_lens))
 }
@@ -206,18 +206,18 @@
 #' Simulate a Multilevel Main Effects Matrix Factor Model
 #'
 #' Generate grouped matrix-valued time series with global and local grand means, row and column main effects, common matrix-factor interactions, and error. Return the data and generating quantities for comparison with fitted components.
-#' @param T Positive whole-number time dimension within R's integer range.
+#' @param TT Positive whole-number time dimension within R's integer range.
 #' @param p,q Whole-number row and column dimension vectors of equal length M >= 2, with entries at least two. Both are unnamed or have unique nonempty matching group names; q is matched to p order.
-#' @param rank Complete eight-field rank list or `mmefm_rank`; see [est_MMEFM()]. Nominal model ranks are positive. IC1 centering requires `r1 + r2[m]` and `kr + kr_m[m]` to be at most `p_m - 1`, and `l1 + l2[m]` and `kc + kc_m[m]` at most `q_m - 1`. Equality is allowed. The generator additionally requires each global/local main-score rank sum to be at most T to construct temporal orthogonality. Supplied rank diagnostics are discarded.
+#' @param rank Complete eight-field rank list or `mmefm_rank`; see [est_MMEFM()]. Nominal model ranks are positive. IC1 centering requires `r1 + r2[m]` and `kr + kr_m[m]` to be at most `p_m - 1`, and `l1 + l2[m]` and `kc + kc_m[m]` at most `q_m - 1`. Equality is allowed. The generator additionally requires each global/local main-score rank sum to be at most TT to construct temporal orthogonality. Supplied rank diagnostics are discarded.
 #' @param strength NULL or a named list with any subset of `main_global`, `main_local`, `common_global`, and `common_local`. Omitted or NULL fields independently default to strength 1. All nested lists and vectors must be unnamed. Values are finite in `(0.5, 1]`; 1 gives strong loadings. See Details for the positional structure.
-#' @param memory NULL for two zero-memory segments for all latent components, or exactly a list with `mu_global`, `mu_local`, `alpha`, `beta`, `G`, and `F`. A basic specification is a numeric vector of finite d < 0.5, or `list(d = ..., seg_lens = ...)` with positive whole segment lengths summing to T. Numeric specifications split T equally, with the remainder in the last segment. Means and G use basic specifications. F uses a basic specification or a group list of them. Alpha/beta use a basic specification or `list(global = <basic>, local = <basic or group list>)`. Local mean innovations share one specification because group demeaning mixes them. No lower bound on d is imposed.
+#' @param memory NULL for two zero-memory segments for all latent components, or exactly a list with `mu_global`, `mu_local`, `alpha`, `beta`, `G`, and `F`. A basic specification is a numeric vector of finite d < 0.5, or `list(d = ..., seg_lens = ...)` with positive whole segment lengths summing to TT. Numeric specifications split TT equally, with the remainder in the last segment. Means and G use basic specifications. F uses a basic specification or a group list of them. Alpha/beta use a basic specification or `list(global = <basic>, local = <basic or group list>)`. Local mean innovations share one specification because group demeaning mixes them. No lower bound on d is imposed.
 #' @param phi,error_phi Stable AR coefficient vectors for latent and error processes, respectively, in lag order. A scalar specifies AR(1) with absolute value below one. For AR(p), the roots of `1 - phi[1]*z - ... - phi[p]*z^p` (and the analogous error polynomial) must lie strictly outside the unit circle. Individual coefficients may exceed one in magnitude.
 #' @param error_rank NULL or a named list with any subset of `ker`, `kec`, `ker_m`, and `kec_m`. The first two are scalar shared error row/column ranks; the last two are length-M local error row/column rank vectors. Omitted fields default to 2. Values are nonnegative whole numbers not exceeding the corresponding spatial dimensions. Named local vectors match named p/q groups; otherwise matching is positional. Zero in either direction gives a zero factor-error component while retaining zero-rank tensor dimensions.
 #' @param error_loading_zero_prob Probability in `[0, 1)` of setting each Gaussian error-loading entry to zero independently.
 #' @param innovation Gaussian (default) or raw Student-t temporal innovations. Spatial loadings and error-scale entries always use Gaussian draws.
 #' @param df Finite positive Student-t degrees of freedom. Raw draws are not variance-standardized. Simulation accepts any positive df, which need not meet the manuscript's moment assumptions. The value is retained in metadata for either innovation family.
 #' @param burn Nonnegative whole-number burn-in within R's integer range.
-#' @param filter_length NULL for `min(2000, max(200, 5*T))`, or a nonnegative whole fractional/AR impulse-response truncation length within R's integer range. See [gen_piecewise_arfima()] for filtering and warmup conventions.
+#' @param filter_length NULL for `min(2000, max(200, 5*TT))`, or a nonnegative whole fractional/AR impulse-response truncation length within R's integer range. See [gen_piecewise_arfima()] for filtering and warmup conventions.
 #' @param active_global NULL for all groups, a nonmissing logical length-M vector in group order, or unique whole group indices, including empty indices. Zero or at least two active groups are allowed; a singleton errors. Inactive global common loadings Q/J are zeroed after their ordinary draws. Nominal positive ranks and G are unchanged.
 #' @param seed Nonnegative whole-number seed within R's integer range. The caller's RNG state is preserved on success and error; RNG kind is unchanged.
 #' @param store_components One nonmissing logical. TRUE stores seven full-array signal/error component lists in addition to truth loadings and factors. FALSE, the default, omits these arrays.
@@ -246,7 +246,7 @@
 #' @examples
 #' rank <- list(r1 = 1L, l1 = 1L, r2 = c(1L, 1L), l2 = c(1L, 1L),
 #'              kr = 1L, kc = 1L, kr_m = c(1L, 1L), kc_m = c(1L, 1L))
-#' simulation <- gen_MMEFM(T = 8L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L), rank = rank,
+#' simulation <- gen_MMEFM(TT = 8L, p = c(a = 4L, b = 5L), q = c(a = 5L, b = 4L), rank = rank,
 #'                         strength = list(main_global = c(0.8, 1),
 #'                           common_global = list(list(0.7, 1), list(0.9, 0.8))),
 #'                         error_rank = list(ker = 1L, kec = 2L, ker_m = c(0L, 2L), kec_m = c(1L, 0L)),
@@ -255,28 +255,28 @@
 #' reconstructed <- Reduce(`+`, lapply(simulation$components, function(x) x[[1L]]))
 #' max(abs(reconstructed - simulation$Xt[[1L]]))
 #' @export
-gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory = NULL,
+gen_MMEFM <- function(TT, p, q, rank, strength = NULL, error_rank = NULL, memory = NULL,
                       phi = 0.6, error_phi = 0.2,
                       error_loading_zero_prob = 0.95, innovation = c("Gaussian", "Student-t"), df = 6,
                       burn = 200L, filter_length = NULL, active_global = NULL, seed = 2026L, store_components = FALSE) {
   innovation <- match.arg(innovation)
-  controls <- list(T = T, burn = burn, seed = seed)
+  controls <- list(TT = TT, burn = burn, seed = seed)
   if (!is.null(filter_length)) {
     controls$filter_length <- filter_length
   }
   for (name in names(controls)) {
     value <- controls[[name]]
-    minimum <- if (name == "T") 1L else 0L
+    minimum <- if (name == "TT") 1L else 0L
     if (!is.numeric(value) || length(value) != 1L || !is.finite(value) || value != floor(value) ||
       value < minimum || value > .Machine$integer.max) {
       stop(name, " must be one finite whole number within integer range, >= ", minimum, ".")
     }
   }
-  T <- as.integer(T)
+  TT <- as.integer(TT)
   burn <- as.integer(burn)
   seed <- as.integer(seed)
   if (is.null(filter_length)) {
-    filter_length <- min(2000, max(200, 5 * as.numeric(T)))
+    filter_length <- min(2000, max(200, 5 * as.numeric(TT)))
   }
   filter_length <- as.integer(filter_length)
   for (name in c("p", "q")) {
@@ -309,13 +309,13 @@ gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory 
   q <- as.integer(q)
   names(p) <- names(q) <- group_names
   M <- length(p)
-  dimensions <- list(M = M, T = T, p = p, q = q, group_names = group_names)
+  dimensions <- list(M = M, T = TT, p = p, q = q, group_names = group_names)
   ranks <- .validate_rank(rank, dimensions)
   for (side in c("row", "column")) {
     total <- if (side == "row") as.numeric(ranks$r1) + ranks$r2 else as.numeric(ranks$l1) + ranks$l2
-    if (any(total > T)) {
-      stop("Global/local ", side, " main-score rank sum must not exceed T in group(s): ",
-        paste(if (is.null(group_names)) which(total > T) else group_names[total > T], collapse = ", "), ".")
+    if (any(total > TT)) {
+      stop("Global/local ", side, " main-score rank sum must not exceed TT in group(s): ",
+        paste(if (is.null(group_names)) which(total > TT) else group_names[total > TT], collapse = ", "), ".")
     }
   }
   strength_fields <- c("main_global", "main_local", "common_global", "common_local")
@@ -381,7 +381,7 @@ gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory 
     }
     strength[[field]] <- if (field == "main_global") groups[[1L]] else groups
   }
-  memory <- .simulation_memory(memory, T, M, group_names)
+  memory <- .simulation_memory(memory, TT, M, group_names)
   for (name in c("phi", "error_phi")) {
     .validate_simulation_ar(get(name), name)
   }
@@ -456,8 +456,8 @@ gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory 
     stop("store_components must be one nonmissing logical.")
   }
   .with_preserved_seed(seed, {
-    mu <- .simulation_series(1L, T, memory$mu_global, phi, innovation, df, burn, filter_length)
-    local_mu <- .simulation_series(M, T, memory$mu_local, phi, innovation, df, burn, filter_length)
+    mu <- .simulation_series(1L, TT, memory$mu_global, phi, innovation, df, burn, filter_length)
+    local_mu <- .simulation_series(M, TT, memory$mu_local, phi, innovation, df, burn, filter_length)
     local_mu <- sweep(local_mu, 1L, rowMeans(local_mu), "-")
     c <- mu_local <- vector("list", M)
     names(c) <- names(mu_local) <- group_names
@@ -479,27 +479,27 @@ gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory 
     for (m in seq_len(M)) {
       B2[[m]] <- .simulation_loading(q[m], ranks$l2[m], strength$main_local[[m]][2L])
     }
-    alpha <- .simulation_series(ranks$r1, T, memory$alpha$global, phi, innovation, df, burn, filter_length)
-    beta <- .simulation_series(ranks$l1, T, memory$beta$global, phi, innovation, df, burn, filter_length)
+    alpha <- .simulation_series(ranks$r1, TT, memory$alpha$global, phi, innovation, df, burn, filter_length)
+    beta <- .simulation_series(ranks$l1, TT, memory$beta$global, phi, innovation, df, burn, filter_length)
     alpha_local <- beta_local <- a <- b <- vector("list", M)
     names(alpha_local) <- names(beta_local) <- names(a) <- names(b) <- group_names
     for (m in seq_len(M)) {
-      alpha_local[[m]] <- .simulation_series(ranks$r2[m], T, memory$alpha$local[[m]], phi, innovation, df,
+      alpha_local[[m]] <- .simulation_series(ranks$r2[m], TT, memory$alpha$local[[m]], phi, innovation, df,
         burn, filter_length)
-      beta_local[[m]] <- .simulation_series(ranks$l2[m], T, memory$beta$local[[m]], phi, innovation, df, burn,
+      beta_local[[m]] <- .simulation_series(ranks$l2[m], TT, memory$beta$local[[m]], phi, innovation, df, burn,
         filter_length)
       alpha_local[[m]] <- alpha_local[[m]] - alpha %*% solve(crossprod(alpha), crossprod(alpha, alpha_local[[m]]))
       beta_local[[m]] <- beta_local[[m]] - beta %*% solve(crossprod(beta), crossprod(beta, beta_local[[m]]))
       a[[m]] <- alpha %*% t(A1[[m]]) + alpha_local[[m]] %*% t(A2[[m]])
       b[[m]] <- beta %*% t(B1[[m]]) + beta_local[[m]] %*% t(B2[[m]])
     }
-    G <- array(.simulation_series(as.numeric(ranks$kr) * ranks$kc, T, memory$G, phi, innovation, df, burn,
-      filter_length), c(T, ranks$kr, ranks$kc))
-    F <- vector("list", M)
-    names(F) <- group_names
+    G <- array(.simulation_series(as.numeric(ranks$kr) * ranks$kc, TT, memory$G, phi, innovation, df, burn,
+      filter_length), c(TT, ranks$kr, ranks$kc))
+    F_local <- vector("list", M)
+    names(F_local) <- group_names
     for (m in seq_len(M)) {
-      F[[m]] <- array(.simulation_series(as.numeric(ranks$kr_m[m]) * ranks$kc_m[m], T,
-        memory$F[[m]], phi, innovation, df, burn, filter_length), c(T, unname(ranks$kr_m[m]), unname(ranks$kc_m[m])))
+      F_local[[m]] <- array(.simulation_series(as.numeric(ranks$kr_m[m]) * ranks$kc_m[m], TT,
+        memory$F[[m]], phi, innovation, df, burn, filter_length), c(TT, unname(ranks$kr_m[m]), unname(ranks$kc_m[m])))
     }
     Q <- J <- R <- C <- vector("list", M)
     names(Q) <- names(J) <- names(R) <- names(C) <- group_names
@@ -531,14 +531,14 @@ gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory 
       C_e[[m]] <- .simulation_error_loading(q[m], error_rank$kec_m[m],
         error_loading_zero_prob)
     }
-    short_memory <- list(d = 0, seg_lens = T)
-    G_e <- array(.simulation_series(as.numeric(error_rank$ker) * error_rank$kec, T,
-      short_memory, error_phi, innovation, df, burn, filter_length), c(T, error_rank$ker, error_rank$kec))
+    short_memory <- list(d = 0, seg_lens = TT)
+    G_e <- array(.simulation_series(as.numeric(error_rank$ker) * error_rank$kec, TT,
+      short_memory, error_phi, innovation, df, burn, filter_length), c(TT, error_rank$ker, error_rank$kec))
     F_e <- sigma <- vector("list", M)
     names(F_e) <- names(sigma) <- group_names
     for (m in seq_len(M)) {
-      F_e[[m]] <- array(.simulation_series(as.numeric(error_rank$ker_m[m]) * error_rank$kec_m[m], T, short_memory, error_phi,
-        innovation, df, burn, filter_length), c(T, unname(error_rank$ker_m[m]), unname(error_rank$kec_m[m])))
+      F_e[[m]] <- array(.simulation_series(as.numeric(error_rank$ker_m[m]) * error_rank$kec_m[m], TT, short_memory, error_phi,
+        innovation, df, burn, filter_length), c(TT, unname(error_rank$ker_m[m]), unname(error_rank$kec_m[m])))
       sigma[[m]] <- matrix(abs(stats::rnorm(as.numeric(p[m]) * q[m])), p[m], q[m])
     }
     for (m in which(!active)) {
@@ -560,22 +560,22 @@ gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory 
     for (m in seq_len(M)) {
       pm <- unname(p[m])
       qm <- unname(q[m])
-      epsilon <- array(.simulation_series(as.numeric(pm) * qm, T, short_memory, error_phi, innovation, df,
-        burn, filter_length), c(T, pm, qm))
-      Xt[[m]] <- array(0, c(T, pm, qm))
+      epsilon <- array(.simulation_series(as.numeric(pm) * qm, TT, short_memory, error_phi, innovation, df,
+        burn, filter_length), c(TT, pm, qm))
+      Xt[[m]] <- array(0, c(TT, pm, qm))
       if (store_components) {
         for (name in component_names) {
-          components[[name]][[m]] <- array(0, c(T, pm, qm))
+          components[[name]][[m]] <- array(0, c(TT, pm, qm))
         }
       }
-      for (t in seq_len(T)) {
+      for (t in seq_len(TT)) {
         global_main <- matrix(mu[t, 1L], pm, qm) +
           outer(as.vector(A1[[m]] %*% alpha[t, ]), rep(1, qm)) + outer(rep(1, pm), as.vector(B1[[m]] %*% beta[t, ]))
         local_main <- matrix(mu_local[[m]][t, 1L], pm, qm) +
           outer(as.vector(A2[[m]] %*% alpha_local[[m]][t, ]), rep(1, qm)) + outer(rep(1, pm),
             as.vector(B2[[m]] %*% beta_local[[m]][t, ]))
         global_common <- Q[[m]] %*% matrix(G[t, , , drop = FALSE], ranks$kr, ranks$kc) %*% t(J[[m]])
-        local_common <- R[[m]] %*% matrix(F[[m]][t, , , drop = FALSE], ranks$kr_m[m], ranks$kc_m[m]) %*% t(C[[m]])
+        local_common <- R[[m]] %*% matrix(F_local[[m]][t, , , drop = FALSE], ranks$kr_m[m], ranks$kc_m[m]) %*% t(C[[m]])
         error_global <- Q_e[[m]] %*% matrix(G_e[t, , , drop = FALSE], error_rank$ker,
           error_rank$kec) %*% t(J_e[[m]])
         error_local <- R_e[[m]] %*% matrix(F_e[[m]][t, , , drop = FALSE], error_rank$ker_m[m],
@@ -604,7 +604,7 @@ gen_MMEFM <- function(T, p, q, rank, strength = NULL, error_rank = NULL, memory 
         global = list(mu = mu, A1 = A1, alpha = alpha, B1 = B1, beta = beta),
         local = list(mu = mu_local, A2 = A2, alpha = alpha_local, B2 = B2, beta = beta_local)
       ),
-      common_component = list(global = list(Q = Q, J = J, G = G, active = active), local = list(R = R, C = C, F = F)),
+      common_component = list(global = list(Q = Q, J = J, G = G, active = active), local = list(R = R, C = C, F = F_local)),
       error = list(global = list(Q = Q_e, J = J_e, G = G_e), local = list(R = R_e, C = C_e, F = F_e), sigma = sigma),
       memory = memory, innovation = list(family = innovation, df = df), components = components
     )

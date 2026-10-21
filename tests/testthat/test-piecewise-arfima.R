@@ -88,14 +88,14 @@ test_that("invalid AR coefficients and memory specifications error without repai
                     list(d = c(0, 0.1), seg_lens = c(Inf, 6L)), list(0, 0))) {
     expect_error(gen_piecewise_arfima(6L, d_vec = spec, burn = 0L, filter_length = 2L), "d_vec")
   }
-  for (name in c("T", "n", "burn", "filter_length", "seed")) {
+  for (name in c("TT", "n", "burn", "filter_length", "seed")) {
     for (value in list(-1, 1.5, NA_real_, Inf, numeric(), matrix(2))) {
-      args <- list(T = 6L, burn = 0L, filter_length = 2L)
+      args <- list(TT = 6L, burn = 0L, filter_length = 2L)
       args[[name]] <- value
       expect_error(do.call(gen_piecewise_arfima, args), name)
     }
   }
-  expect_error(gen_piecewise_arfima(0L), "T")
+  expect_error(gen_piecewise_arfima(0L), "TT")
   expect_error(gen_piecewise_arfima(6L, n = 0L), "n")
   expect_error(gen_piecewise_arfima(6L, df = 0), "df")
   expect_error(gen_piecewise_arfima(6L, return_filters = NA), "return_filters")
@@ -129,4 +129,12 @@ test_that("scoped RNG and filter metadata preserve exactly the same series", {
   expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
   expect_error(gen_piecewise_arfima(6L, phi = 1), "phi")
   expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+})
+
+test_that("piecewise ARFIMA uses the TT time-length argument", {
+  expect_identical(names(formals(gen_piecewise_arfima))[1L], "TT")
+  expect_false("T" %in% names(formals(gen_piecewise_arfima)))
+  series <- gen_piecewise_arfima(TT = 6L, burn = 0L, filter_length = 2L)
+  expect_identical(dim(series), c(6L, 1L))
+  expect_identical(series, gen_piecewise_arfima(6L, burn = 0L, filter_length = 2L))
 })

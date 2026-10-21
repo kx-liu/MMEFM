@@ -33,7 +33,7 @@
 #' @examples
 #' rank <- list(r1 = 1L, l1 = 1L, r2 = rep(1L, 3), l2 = rep(1L, 3),
 #'              kr = 1L, kc = 1L, kr_m = rep(1L, 3), kc_m = rep(1L, 3))
-#' simulation <- gen_MMEFM(T = 40L, p = c(a = 6L, b = 7L, c = 8L), q = c(a = 7L, b = 8L, c = 6L),
+#' simulation <- gen_MMEFM(TT = 40L, p = c(a = 6L, b = 7L, c = 8L), q = c(a = 7L, b = 8L, c = 6L),
 #'                         rank = rank, burn = 20L, filter_length = 40L, seed = 2026L)
 #' fit <- est_MMEFM(simulation$Xt, rank = simulation$rank, K0 = 8L, max_iter = 50L, seed = 2026L)
 #' summary(fit)

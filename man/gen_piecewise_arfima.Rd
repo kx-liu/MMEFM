@@ -5,7 +5,7 @@
 \title{Generate piecewise ARFIMA time series}
 \usage{
 gen_piecewise_arfima(
-  T,
+  TT,
   n = 1L,
   d_vec = 0,
   phi = 0.5,
@@ -18,11 +18,11 @@ gen_piecewise_arfima(
 )
 }
 \arguments{
-\item{T}{Positive whole-number sample length within R's integer range.}
+\item{TT}{Positive whole-number sample length within R's integer range.}
 
 \item{n}{Positive whole-number number of series within R's integer range. The series dimension is retained when n = 1.}
 
-\item{d_vec}{A shared numeric vector of finite memory parameters below 0.5, a shared \code{list(d = ..., seg_lens = ...)}, or a list of length n specifying each series. Numeric vectors split T approximately equally, with the remainder in the final segment. Explicit segment lengths are positive whole numbers summing to T. No lower bound on d is imposed.}
+\item{d_vec}{A shared numeric vector of finite memory parameters below 0.5, a shared \code{list(d = ..., seg_lens = ...)}, or a list of length n specifying each series. Numeric vectors split TT approximately equally, with the remainder in the final segment. Explicit segment lengths are positive whole numbers summing to TT. No lower bound on d is imposed.}
 
 \item{phi}{Nonempty finite AR coefficient vector in lag order: \code{X[t] = phi[1]*X[t-1] + ... + phi[p]*X[t-p] + innovation[t]}. All roots of \code{1 - phi[1]*z - ... - phi[p]*z^p} must lie strictly outside the unit circle. A scalar specifies AR(1) with absolute value below one; stable higher-order coefficients may individually exceed one in magnitude.}
 
@@ -32,7 +32,7 @@ gen_piecewise_arfima(
 
 \item{burn}{Nonnegative whole-number burn-in within R's integer range.}
 
-\item{filter_length}{NULL for \code{min(2000, max(200, 5*T))}, or a nonnegative whole-number filter truncation length within R's integer range.}
+\item{filter_length}{NULL for \code{min(2000, max(200, 5*TT))}, or a nonnegative whole-number filter truncation length within R's integer range.}
 
 \item{seed}{Nonnegative whole-number seed within R's integer range. The caller's RNG state and kind are preserved on success and error; repeated calls agree under the same seed and RNG kind.}
 
@@ -55,7 +55,7 @@ AR stability concerns only the short-memory component. The bounds on d and df do
 }
 \examples{
 series <- gen_piecewise_arfima(
-  T = 12L, n = 2L, d_vec = c(0, 0.2), phi = c(0.4, -0.1),
+  TT = 12L, n = 2L, d_vec = c(0, 0.2), phi = c(0.4, -0.1),
   burn = 4L, filter_length = 8L, seed = 2026L
 )
 dim(series)
